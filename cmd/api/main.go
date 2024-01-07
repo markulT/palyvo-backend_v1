@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"palyvoua/internal/api/payment"
 	"palyvoua/internal/controllers"
@@ -31,6 +32,14 @@ func main() {
 	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
 	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo)
 	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:4200"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+
+	r.Use(cors.New(config))
+
 
 	r.Run()
 
