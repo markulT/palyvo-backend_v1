@@ -6,6 +6,7 @@ import (
 	"github.com/stripe/stripe-go/v75/charge"
 	"github.com/stripe/stripe-go/v75/customer"
 	"github.com/stripe/stripe-go/v75/paymentmethod"
+	"github.com/stripe/stripe-go/v75/setupintent"
 )
 
 type PaymentError struct {}
@@ -19,7 +20,8 @@ type PaymentService interface {
 	GetDefaultPaymentMethod(customerID string) (string, error)
 	DeletePaymentMethodByIDAndCustomerID(paymentMethodID string, customerID string) error
 	ChargeCustomer(customerID string, amount int) (string, error)
-
+	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
+	GetCustomerByID(cid string) (*stripe.Customer, error)
 }
 
 func NewStripePaymentService() PaymentService {
@@ -30,7 +32,29 @@ type stripePaymentService struct {
 
 }
 
-func (s stripePaymentService) SetDefaultPaymentMethod(customerID string, paymentMethodID string) error {
+func (s *stripePaymentService) GetCustomerByID(cid string) (*stripe.Customer, error) {
+	c, err := customer.Get(cid, nil)
+	if err != nil {
+		return &stripe.Customer{}, err
+	}
+	return c, nil
+}
+
+func (s *stripePaymentService) CreateSetupIntent(cid string) (*stripe.SetupIntent, error) {
+	params := &stripe.SetupIntentParams{
+		AutomaticPaymentMethods: &stripe.SetupIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+		Customer: stripe.String(cid),
+	}
+	si, err := setupintent.New(params)
+	if err != nil {
+		return &stripe.SetupIntent{}, err
+	}
+	return si, nil
+}
+
+func (s *stripePaymentService) SetDefaultPaymentMethod(customerID string, paymentMethodID string) error {
 	params := &stripe.CustomerParams{
 		InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{
 			DefaultPaymentMethod: stripe.String(customerID),
@@ -41,7 +65,7 @@ func (s stripePaymentService) SetDefaultPaymentMethod(customerID string, payment
 	return err
 }
 
-func (s stripePaymentService) CreateCustomer(email string) (string, error) {
+func (s *stripePaymentService) CreateCustomer(email string) (string, error) {
 	params := &stripe.CustomerParams{
 		Email: &email,
 	}
@@ -52,7 +76,7 @@ func (s stripePaymentService) CreateCustomer(email string) (string, error) {
 	return c.ID, err
 }
 
-func (s stripePaymentService) GetDefaultPaymentMethod(customerID string) (string, error) {
+func (s *stripePaymentService) GetDefaultPaymentMethod(customerID string) (string, error) {
 	a := "invoice_settings.default_payment_method"
 
 	params := &stripe.CustomerParams{
@@ -68,7 +92,7 @@ func (s stripePaymentService) GetDefaultPaymentMethod(customerID string) (string
 
 
 
-func (s stripePaymentService) DeletePaymentMethodByIDAndCustomerID(paymentMethodID string, customerID string) error {
+func (s *stripePaymentService) DeletePaymentMethodByIDAndCustomerID(paymentMethodID string, customerID string) error {
 	pm, err := paymentmethod.Get(paymentMethodID, nil)
 	if err != nil {
 		return err
@@ -84,7 +108,7 @@ func (s stripePaymentService) DeletePaymentMethodByIDAndCustomerID(paymentMethod
 	return nil
 }
 
-func (s stripePaymentService) ChargeCustomer(customerID string, amount int) (string, error) {
+func (s *stripePaymentService) ChargeCustomer(customerID string, amount int) (string, error) {
 	params := &stripe.ChargeParams{
 		Amount:   stripe.Int64(int64(amount)),
 		Currency: stripe.String(string(stripe.CurrencyUSD)),

@@ -29,6 +29,8 @@ type paymentService interface {
 	GetDefaultPaymentMethod(customerID string) (string, error)
 	DeletePaymentMethodByIDAndCustomerID(paymentMethodID string, customerID string) error
 	ChargeCustomer(customerID string, amount int) (string, error)
+	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
+	GetCustomerByID(cid string) (*stripe.Customer, error)
 }
 
 func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo) {
@@ -42,7 +44,51 @@ func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr 
 	paymentGroup.DELETE("/paymentMethod/delete/:id", jsonHelper.MakeHttpHandler(pc.deletePaymentMethod))
 
 	paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
+	paymentGroup.POST("/setupIntent/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
 
+}
+
+type CreateSetupIntentRequest struct{}
+
+func (sc *paymentController) createSetupIntent(c *gin.Context) error {
+
+	var body CreateSetupIntentRequest
+	jsonHelper.BindWithException(&body, c)
+
+	userEmail, exists := c.Get("userEmail")
+	if !exists {
+		return jsonHelper.ApiError{
+			Err:    "Unauthorized",
+			Status: 417,
+		}
+	}
+	user, err := sc.userRepo.GetUserByEmail(fmt.Sprintf("%s", userEmail))
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    err.Error(),
+			Status: 500,
+		}
+	}
+
+	si, err := sc.paymentService.CreateSetupIntent(user.CustomerID)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    err.Error(),
+			Status: 500,
+		}
+	}
+	customer, err := sc.paymentService.GetCustomerByID(user.CustomerID)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    err.Error(),
+			Status: 500,
+		}
+	}
+	c.JSON(200, gin.H{
+		"setupClientSecret": si.ClientSecret,
+		"customerID":        customer.ID,
+	})
+	return nil
 }
 
 type BuyAmountRequest struct {
