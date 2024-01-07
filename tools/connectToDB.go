@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
@@ -21,8 +22,8 @@ func ConnectToDb() {
 		log.Println("Error while connecting to database at /utils/connectToDb.go")
 		log.Fatal(err)
 	}
-	DB = client.Database("docker-test")
-
+	DB = client.Database("palyvo-db")
+	fmt.Errorf(DB.Name())
 }
 
 var RelationalDB *sql.DB
@@ -32,7 +33,8 @@ func ConnectToPostgres() {
 	username := os.Getenv("POSTGRES_USER")
 	password := os.Getenv("POSTGRES_PASSWORD")
 	dbname := os.Getenv("POSTGRES_DB_NAME")
-	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=false",username, password, dbname )
+	host:= os.Getenv("POSTGRES_HOST")
+	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=false",host, username, password, dbname )
 	RelationalDB, err = sql.Open("postgres", connStr)
 	if err != nil {
 		log.Println("Error while connecting to utility SQL database")

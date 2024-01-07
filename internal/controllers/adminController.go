@@ -17,7 +17,7 @@ type adminRepo interface {
 	GetAllRoles() ([]models.Role, error)
 	SaveRole(role models.Role) error
 	DeleteRoleByID(roleID uuid.UUID) error
-	GetRoleByID(uuid2 uuid.UUID) (models.Role, error)
+	GetRoleByID(uuid.UUID) (models.Role, error)
 }
 
 func SetupAdminRoutes(r *gin.Engine, ar adminRepo, ur userRepository) {

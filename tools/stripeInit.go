@@ -6,6 +6,6 @@ import (
 )
 
 func StripeInit() {
-	stripeSecretKey := os.Getenv("stripeSecretKey")
+	stripeSecretKey := os.Getenv("STRIPE_SECRET_KEY")
 	stripe.Key = stripeSecretKey
 }

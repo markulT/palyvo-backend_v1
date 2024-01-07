@@ -12,6 +12,9 @@ import (
 type ProductRepo interface {
 	DecreaseProductAmount(c context.Context, pid uuid.UUID,amount int) error
 	GetProduct(c context.Context, pid uuid.UUID) (models.Product, error)
+	SaveProduct(context.Context, *models.Product) error
+	DeleteProduct(c context.Context, pid uuid.UUID) error
+	UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error
 }
 
 func NewProductRepo() ProductRepo {
@@ -19,6 +22,10 @@ func NewProductRepo() ProductRepo {
 }
 
 type defaultProductRepo struct {}
+
+func (pr *defaultProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
+	return nil
+}
 
 func (pr *defaultProductRepo) DecreaseProductAmount(c context.Context,pID uuid.UUID,amount int) error {
 
@@ -57,3 +64,7 @@ func (pr *defaultProductRepo) GetProduct(c context.Context, pid uuid.UUID) (mode
 	return models.Product{}, nil
 }
 
+func (pr *defaultProductRepo) SaveProduct(c context.Context, p *models.Product) error {
+
+	return nil
+}

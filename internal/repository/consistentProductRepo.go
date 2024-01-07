@@ -12,8 +12,16 @@ func NewConsistentProductRepo() ProductRepo {
 	return &consistentProductRepo{}
 }
 
-type consistentProductRepo struct {
+type consistentProductRepo struct {}
 
+func (cpr *consistentProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
+	var err error
+	stmt, err := tools.RelationalDB.Prepare("delete from product where id = ?")
+	if err != nil {
+		return err
+	}
+	err = stmt.QueryRow(pid.String()).Err()
+	return err
 }
 
 func (cpr *consistentProductRepo) DecreaseProductAmount(c context.Context, pid uuid.UUID, amount int) error {
@@ -60,11 +68,26 @@ func (cpr *consistentProductRepo) GetProduct(c context.Context, pid uuid.UUID) (
 	if err != nil {
 		return models.Product{}, err
 	}
-	err = stmt.QueryRow(pid.String()).Scan(&p.ID, &p.Amount, &p.Title)
+	var stringID string
+	err = stmt.QueryRow(pid.String()).Scan(&stringID, &p.Amount, &p.Title)
+	if err != nil {
+		return models.Product{}, err
+	}
+	p.ID, err = uuid.Parse(stringID)
 	if err != nil {
 		return models.Product{}, err
 	}
 	return p ,nil
+}
+
+func (cpr *consistentProductRepo) SaveProduct(c context.Context, p *models.Product) error {
+	var err error
+	stmt, err := tools.RelationalDB.Prepare("insert into products (amount, id, title, price, currency) values (?, ?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	err = stmt.QueryRow(p.Amount, p.ID.String(), p.Title, p.Price, p.Currency).Err()
+	return err
 }
 
 

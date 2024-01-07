@@ -2,8 +2,9 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	"os"
+	"palyvoua/internal/api/payment"
 	"palyvoua/internal/controllers"
+	"palyvoua/internal/repository"
 	"palyvoua/tools"
 )
 
@@ -11,14 +12,26 @@ func init() {
 	tools.LoadEnvVariables()
 	tools.ConnectToDb()
 	tools.ConnectToPostgres()
+	tools.StripeInit()
 }
 
 func main() {
 
 	r := gin.Default()
 
-	controllers.SetupAuthRoutes(r, nil)
+	userRepo:=repository.NewUserRepo()
+	adminRepo := repository.NewAdminRepo()
+	ticketRepo := repository.NewTickerRepo()
+	stripePaymentService := payment.NewStripePaymentService()
+	consistentProductRepo := repository.NewConsistentProductRepo()
 
-	r.Run(os.Getenv("PORT"))
+	controllers.SetupAuthRoutes(r, userRepo, stripePaymentService)
+	controllers.SetupOperatorRoutes(r, userRepo, adminRepo, ticketRepo)
+	controllers.SetupPaymentRoutes(r, userRepo,stripePaymentService, ticketRepo, consistentProductRepo)
+	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
+	controllers.SetupProductRoutes(r, consistentProductRepo)
+	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
+
+	r.Run()
 
 }

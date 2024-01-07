@@ -28,7 +28,7 @@ type paymentService interface {
 	CreateCustomer(email string) (string, error)
 	GetDefaultPaymentMethod(customerID string) (string, error)
 	DeletePaymentMethodByIDAndCustomerID(paymentMethodID string, customerID string) error
-	ChargeCustomer(customerID string, amount int) error
+	ChargeCustomer(customerID string, amount int) (string, error)
 }
 
 func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo) {
@@ -95,7 +95,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 			ExpiresAt: int(time.Now().Add(time.Hour * 24 * time.Duration(expirationTerm)).Unix()),
 			ID: ticketID,
 			UserId: user.ID,
-			Activated: false,
+			Status: models.NOT_ACTIVATED,
 			Amount: body.Amount,
 		}
 		ticket.SetSecret("Huy")
@@ -108,7 +108,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 			}
 		}
 
-		err = pc.paymentService.ChargeCustomer(user.CustomerID, body.Amount*product.Amount)
+		pmID, err := pc.paymentService.ChargeCustomer(user.CustomerID, body.Amount*product.Amount)
 		if err != nil {
 
 			return jsonHelper.ApiError{
@@ -116,7 +116,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 				Status: 500,
 			}
 		}
-
+		pc.ticketRepo.UpdatePaymentID(ticketID, pmID)
 		err = pc.productRepo.DecreaseProductAmount(c, product.ID, body.Amount)
 		if err != nil {
 			return jsonHelper.ApiError{

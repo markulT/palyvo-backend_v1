@@ -3,8 +3,8 @@ package auth
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
-	"golearn/utils"
 	"os"
+	"palyvoua/tools"
 	"time"
 )
 
@@ -36,13 +36,13 @@ func createToken(body map[string]interface{}, expirationTime time.Time, secretKe
 
 func CreateAccessToken(body map[string]interface{}) (string, error) {
 
-	expirationTime := utils.GetEnvInt("refreshExpirationTimeDays", 30)
+	expirationTime := tools.GetEnvInt("refreshExpirationTimeDays", 30)
 	expirationTimeUnix := time.Now().Add(time.Duration(expirationTime) * time.Hour)
 
 	return createToken(body, expirationTimeUnix, []byte(os.Getenv("secretKey")))
 }
 func CreateRefreshToken(body map[string]interface{}) (string, error) {
-	expirationTime := utils.GetEnvInt("refreshExpirationTimeDays", 30)
+	expirationTime := tools.GetEnvInt("refreshExpirationTimeDays", 30)
 	expirationTimeUnix := time.Now().Add(time.Duration(expirationTime) * 24 * time.Hour)
 	return createToken(body,expirationTimeUnix, []byte(os.Getenv("secretKey")))
 }

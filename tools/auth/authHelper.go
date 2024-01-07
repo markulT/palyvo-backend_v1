@@ -1,16 +1,21 @@
 package auth
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
-	"golearn/repository"
+	"palyvoua/internal/models"
+	repository "palyvoua/internal/repository"
 )
 
 func UserExists(email string) bool {
 	//var count int64
 	//utils.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
-	_, err := repository.GetUserByEmail(email)
-	if err != nil {
+	userRepo := repository.NewUserRepo()
+	user, _ := userRepo.GetUserByEmail(email)
+	fmt.Println(user)
+	isEmpty := user == models.User{}
+	if isEmpty {
 		return false
 	}
 	return true

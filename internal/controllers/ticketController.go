@@ -20,17 +20,22 @@ type ticketRepo interface {
 	GetAll() ([]models.Ticket, error)
 	GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error)
 	GetByID(uuid.UUID) (models.Ticket, error)
+	UpdateStatus(uuid.UUID, string) error
+	UpdatePaymentID(uuid.UUID, string) error
 }
 
-type ticketControllerOptions func(*ticketController)
+//type ticketControllerOptions func(*ticketController)
+//
+//func WithUserRepo(userRepo userRepository) ticketControllerOptions {
+//	return func(controller *ticketController) {
+//		controller.userRepo = userRepo
+//	}
+//}
 
-func SetupTicketRoutes(r *gin.Engine, opts ...ticketControllerOptions) {
+func SetupTicketRoutes(r *gin.Engine, userRepo userRepository, tr ticketRepo, adminRepo adminRepo) {
 	ticketGroup := r.Group("/ticket")
 
-	tc := ticketController{}
-	for _, opt := range opts {
-		opt(&tc)
-	}
+	tc := ticketController{authRepo: userRepo, userRepo: userRepo, ticketRepo: tr, adminRepo: adminRepo}
 
 	ticketGroup.Use(auth.AuthMiddleware(tc.authRepo))
 	ticketGroup.Use(auth.RoleMiddleware(0, tc.authRepo, tc.adminRepo))
