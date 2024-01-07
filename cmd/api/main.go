@@ -29,7 +29,7 @@ func main() {
 	controllers.SetupOperatorRoutes(r, userRepo, adminRepo, ticketRepo)
 	controllers.SetupPaymentRoutes(r, userRepo,stripePaymentService, ticketRepo, consistentProductRepo)
 	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
-	controllers.SetupProductRoutes(r, consistentProductRepo)
+	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo)
 	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
 
 	r.Run()
