@@ -37,6 +37,8 @@ func main() {
 	config.AllowOrigins = []string{"http://localhost:4200"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
+	config.AllowCredentials = true
+	config.AddAllowHeaders("Access-Control-Allow-Credentials")
 
 	r.Use(cors.New(config))
 
