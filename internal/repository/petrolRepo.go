@@ -23,6 +23,11 @@ func NewProductRepo() ProductRepo {
 
 type defaultProductRepo struct {}
 
+func (pr *defaultProductRepo) UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error {
+	//TODO implement me
+	return nil
+}
+
 func (pr *defaultProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
 	return nil
 }

@@ -14,6 +14,16 @@ func NewConsistentProductRepo() ProductRepo {
 
 type consistentProductRepo struct {}
 
+func (cpr *consistentProductRepo) UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error {
+	var err error
+	stmt, err := tools.RelationalDB.Prepare("update product set amount = ? where id = ?")
+	if err != nil {
+		return err
+	}
+	err = stmt.QueryRow(amount, pid.String()).Err()
+	return err
+}
+
 func (cpr *consistentProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
 	var err error
 	stmt, err := tools.RelationalDB.Prepare("delete from product where id = ?")

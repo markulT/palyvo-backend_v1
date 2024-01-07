@@ -19,19 +19,13 @@ func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userReposit
 	pc := productController{productRepo: pr}
 
 	productGroup.Use(auth.AuthMiddleware(ur))
-	productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
+	//productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
 
 	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
-	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
+	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.createProduct))
 }
 
-func (pc *productController) buyProduct(c *gin.Context) error {
-
-
-
-	return nil
-}
 
 type CreateProductRequest struct {
 	Amount int `json:"amount" bson:"amount"`
@@ -61,6 +55,32 @@ func (pc *productController) createProduct(c *gin.Context) error {
 		Currency: body.Currency,
 	}
 	pc.productRepo.SaveProduct(context.Background(), &p)
+	c.JSON(200, gin.H{})
+	return nil
+}
+
+type UpdateProductAmountRequest struct {
+	ProductID string `json:"productId"`
+	Amount int `json:"amount"`
+}
+
+func (pc *productController) updateProductAmount(c *gin.Context) error {
+	var err error
+	var body UpdateProductAmountRequest
+	if err:=c.Bind(&body);err!=nil {
+		return jsonHelper.DefaultHttpErrors["BadRequest"]
+	}
+	pid, err := uuid.Parse(body.ProductID)
+	if err != nil {
+		return jsonHelper.DefaultHttpErrors["BadRequest"]
+	}
+	err = pc.productRepo.UpdateProductAmount(context.Background(), pid , body.Amount)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "Error updating product amount",
+			Status: 500,
+		}
+	}
 	c.JSON(200, gin.H{})
 	return nil
 }
