@@ -18,6 +18,7 @@ type adminRepo interface {
 	SaveRole(role models.Role) error
 	DeleteRoleByID(roleID uuid.UUID) error
 	GetRoleByID(uuid.UUID) (models.Role, error)
+	GetRoleByName(string) (models.Role, error)
 }
 
 func SetupAdminRoutes(r *gin.Engine, ar adminRepo, ur userRepository) {
@@ -27,7 +28,7 @@ func SetupAdminRoutes(r *gin.Engine, ar adminRepo, ur userRepository) {
 	ac := adminController{ar, ur}
 
 	adminGroup.Use(auth.AuthMiddleware(ur))
-	adminGroup.Use(auth.RoleMiddleware(2, ur ,ar))
+	//adminGroup.Use(auth.RoleMiddleware(2, ur ,ar))
 	adminGroup.GET("/role", jsonHelper.MakeHttpHandler(ac.getAllRoles))
 	adminGroup.POST("/role", jsonHelper.MakeHttpHandler(ac.createRole))
 	adminGroup.DELETE("/role/:id", jsonHelper.MakeHttpHandler(ac.deleteRoleByID))

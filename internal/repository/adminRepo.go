@@ -13,6 +13,7 @@ type AdminRepo interface {
 	SaveRole(role models.Role) error
 	DeleteRoleByID(roleID uuid.UUID) error
 	GetRoleByID(uuid2 uuid.UUID) (models.Role, error)
+	GetRoleByName(string) (models.Role, error)
 }
 
 func NewAdminRepo() AdminRepo {
@@ -21,6 +22,16 @@ func NewAdminRepo() AdminRepo {
 
 type defaultAdminRepo struct {
 
+}
+
+func (d *defaultAdminRepo) GetRoleByName(name string) (models.Role, error) {
+	var role models.Role
+	roleCollection := tools.DB.Collection("roles")
+	err := roleCollection.FindOne(context.TODO(), bson.M{"name":name}).Decode(&role)
+	if err != nil {
+		return models.Role{}, err
+	}
+	return role, nil
 }
 
 func (d *defaultAdminRepo) GetAllRoles() ([]models.Role, error) {

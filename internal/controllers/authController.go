@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"palyvoua/internal/models"
+	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
@@ -126,13 +127,13 @@ type RegisterResponse struct {
 }
 
 func (ac *authController) register(c *gin.Context) error {
-	fmt.Println("0")
+	adminRepo := repository.NewAdminRepo()
 	var body RegisterRequest
-	fmt.Println("0.3")
+
 	if err := c.Bind(&body);err!=nil {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
-	fmt.Println("0.4")
+
 	userExists := auth.UserExists(body.Email)
 	if userExists {
 		return jsonHelper.ApiError{
@@ -140,7 +141,7 @@ func (ac *authController) register(c *gin.Context) error {
 			Status: 400,
 		}
 	}
-	fmt.Println("0.5")
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return jsonHelper.ApiError{
@@ -155,19 +156,30 @@ func (ac *authController) register(c *gin.Context) error {
 			Status: 500,
 		}
 	}
-	fmt.Println("0.6")
-	newUser := models.User{ID: userId, Email: body.Email, Password: string(hashedPassword)}
+
+	role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
+	//role,err := adminRepo.GetRoleByName("ROLE_OPERATOR")
+	//role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "No role found",
+			Status: 404,
+		}
+	}
+	newUser := models.User{
+		ID: userId, Email: body.Email, Password: string(hashedPassword), Role:role.ID,
+	}
 	tokens := auth.GenerateTokens(map[string]interface{}{
 		"email": newUser.Email,
 	}, c)
-	fmt.Println("1")
+
 	if err := ac.AuthRepo.SaveUser(&newUser); err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
 			Status: 500,
 		}
 	}
-	fmt.Println("2")
+
 	customerID, err := ac.paymentService.CreateCustomer(body.Email)
 	if err != nil {
 		return jsonHelper.ApiError{
@@ -175,7 +187,6 @@ func (ac *authController) register(c *gin.Context) error {
 			Status: 500,
 		}
 	}
-	fmt.Println("3")
 	err = ac.AuthRepo.UpdateCustomerIDByEmail(body.Email, customerID)
 	if err != nil {
 		return jsonHelper.ApiError{
@@ -183,7 +194,7 @@ func (ac *authController) register(c *gin.Context) error {
 			Status: 500,
 		}
 	}
-	fmt.Println("4")
+
 	c.JSON(200, gin.H{
 		"accessToken":  tokens.AccessToken,
 		"refreshToken": tokens.RefreshToken,
