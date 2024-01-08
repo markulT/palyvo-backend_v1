@@ -56,15 +56,20 @@ func (ac *adminController) createRole(c *gin.Context) error {
 
 	var body CreateRoleRequest
 	if err:=c.Bind(&body);err!=nil {
+
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
-
+	roleID, err := uuid.NewRandom()
+	if err != nil {
+		return jsonHelper.DefaultHttpErrors["BadRequest"]
+	}
 	role := models.Role{
+		ID: roleID,
 		Name:           body.Name,
 		AuthorityLevel: body.AuthorityLevel,
 	}
 
-	err := ac.adminRepo.SaveRole(role)
+	err = ac.adminRepo.SaveRole(role)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Error saving role",
