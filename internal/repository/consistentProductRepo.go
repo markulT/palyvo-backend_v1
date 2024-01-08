@@ -14,6 +14,33 @@ func NewConsistentProductRepo() ProductRepo {
 
 type consistentProductRepo struct {}
 
+func (cpr *consistentProductRepo) GetAllProducts(c context.Context) ([]models.Product, error) {
+	var products []models.Product
+	var err error
+	stmt, err := tools.RelationalDB.Prepare("select * from product")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+	rows,err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	if err = rows.Err();err!=nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var p models.Product
+		err := rows.Scan(&p.Amount, &p.ID, &p.Title, &p.Price, &p.Currency)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, p)
+	}
+	return products, nil
+}
+
 func (cpr *consistentProductRepo) UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error {
 	var err error
 	stmt, err := tools.RelationalDB.Prepare("update product set amount = ? where id = ?")

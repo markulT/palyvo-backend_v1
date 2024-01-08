@@ -20,18 +20,48 @@ func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userReposit
 
 	productGroup.Use(auth.AuthMiddleware(ur))
 	//productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
-
+	productGroup.GET("/all", jsonHelper.MakeHttpHandler(pc.getAllProducts))
+	productGroup.GET("/:id", jsonHelper.MakeHttpHandler(pc.createProduct))
 	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
 	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.createProduct))
 }
 
+func (pc *paymentController) getProductByID(c *gin.Context) error {
+	productIDField := c.Param("id")
+	productID, err := uuid.Parse(productIDField)
+	if err != nil {
+		return jsonHelper.DefaultHttpErrors["BadRequest"]
+	}
+
+	product, err := pc.productRepo.GetProduct(context.Background(), productID)
+	if err != nil {
+		return jsonHelper.DefaultHttpErrors["InternalServerError"]
+	}
+	c.JSON(200, gin.H{"product":product})
+	return nil
+}
 
 type CreateProductRequest struct {
 	Amount int `json:"amount" bson:"amount"`
 	Title string `json:"title" bson:"title"`
 	Price int `json:"price" bson:"price"`
 	Currency string `json:"currency" bson:"currency"`
+}
+
+func (pc *productController) getAllProducts(c *gin.Context) error {
+
+	var err error
+
+	products, err := pc.productRepo.GetAllProducts(context.Background())
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "No products",
+			Status: 500,
+		}
+	}
+	c.JSON(200, gin.H{"products":products})
+	return nil
 }
 
 func (pc *productController) createProduct(c *gin.Context) error {
