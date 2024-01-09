@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1234
-      POSTGRES_DB: petrol-backend-utility
+      POSTGRES_DB: petrol_backend_util
     networks:
       - palyvo-network
   mongo1:

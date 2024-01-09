@@ -27,18 +27,38 @@ func ConnectToDb() {
 }
 
 var RelationalDB *sql.DB
-
 func ConnectToPostgres() {
 	var err error
 	username := os.Getenv("POSTGRES_USER")
 	password := os.Getenv("POSTGRES_PASSWORD")
 	dbname := os.Getenv("POSTGRES_DB_NAME")
-	host:= os.Getenv("POSTGRES_HOST")
-	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=false",host, username, password, dbname )
-	RelationalDB, err = sql.Open("postgres", connStr)
+	host := os.Getenv("POSTGRES_HOST")
+	
+	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable", host, username, password, dbname)
+
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		log.Println("Error while connecting to utility SQL database")
+		log.Printf("Error while connecting to PostgreSQL: %v", err)
 		log.Fatal(err)
 	}
-}
+	defer db.Close()
 
+	createTableSQL := `CREATE TABLE IF NOT EXISTS products (
+		amount INTEGER,
+		id UUID PRIMARY KEY,
+		title TEXT,
+		price INTEGER,
+		currency TEXT
+	);`
+
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		log.Printf("Error creating table: %v", err)
+		log.Fatal(err)
+	}
+
+	RelationalDB = db
+}
+func InitSQL() {
+
+}
