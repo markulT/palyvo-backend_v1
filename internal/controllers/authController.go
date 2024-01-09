@@ -157,9 +157,9 @@ func (ac *authController) register(c *gin.Context) error {
 		}
 	}
 
-	role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
-	//role,err := adminRepo.GetRoleByName("ROLE_OPERATOR")
 	//role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
+	//role,err := adminRepo.GetRoleByName("ROLE_OPERATOR")
+	role,err := adminRepo.GetRoleByName("ROLE_USER")
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "No role found",
