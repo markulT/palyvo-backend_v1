@@ -111,7 +111,7 @@ func (s *stripePaymentService) DeletePaymentMethodByIDAndCustomerID(paymentMetho
 func (s *stripePaymentService) ChargeCustomer(customerID string, amount int) (string, error) {
 	params := &stripe.ChargeParams{
 		Amount:   stripe.Int64(int64(amount)),
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Currency: stripe.String(string(stripe.CurrencyUAH)),
 		Customer: stripe.String(customerID),
 	}
 	ch, err := charge.New(params)

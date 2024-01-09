@@ -17,7 +17,7 @@ type consistentProductRepo struct {}
 func (cpr *consistentProductRepo) GetAllProducts(c context.Context) ([]models.Product, error) {
 	var products []models.Product
 	var err error
-	stmt, err := tools.RelationalDB.Prepare("select * from product")
+	stmt, err := tools.RelationalDB.Prepare("select * from products")
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (cpr *consistentProductRepo) GetAllProducts(c context.Context) ([]models.Pr
 
 func (cpr *consistentProductRepo) UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error {
 	var err error
-	stmt, err := tools.RelationalDB.Prepare("update product set amount = ? where id = ?")
+	stmt, err := tools.RelationalDB.Prepare("update products set amount = $1 where id = $2")
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func (cpr *consistentProductRepo) UpdateProductAmount(c context.Context, pid uui
 
 func (cpr *consistentProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
 	var err error
-	stmt, err := tools.RelationalDB.Prepare("delete from product where id = ?")
+	stmt, err := tools.RelationalDB.Prepare("delete from products where id = $1")
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (cpr *consistentProductRepo) DecreaseProductAmount(c context.Context, pid u
 		tx.Rollback()
 		return err
 	}
-	getProductStmt, err := tx.Prepare("SELECT id, amount, title from products where id = ?")
+	getProductStmt, err := tx.Prepare("SELECT id, amount, title from products where id = $1")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -83,7 +83,7 @@ func (cpr *consistentProductRepo) DecreaseProductAmount(c context.Context, pid u
 
 	newAmount := p.Amount - amount
 
-	updateProductStmt, err := tx.Prepare("UPDATE products SET amount = ? WHERE id = ?")
+	updateProductStmt, err := tx.Prepare("UPDATE products SET amount = $1 WHERE id = $2")
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -101,7 +101,7 @@ func (cpr *consistentProductRepo) DecreaseProductAmount(c context.Context, pid u
 func (cpr *consistentProductRepo) GetProduct(c context.Context, pid uuid.UUID) (models.Product, error) {
 	var err error
 	p := models.Product{}
-	stmt, err := tools.RelationalDB.Prepare("select id, amount, title from products where id = ?")
+	stmt, err := tools.RelationalDB.Prepare("select id, amount, title from products where id = $1")
 	if err != nil {
 		return models.Product{}, err
 	}
@@ -119,7 +119,7 @@ func (cpr *consistentProductRepo) GetProduct(c context.Context, pid uuid.UUID) (
 
 func (cpr *consistentProductRepo) SaveProduct(c context.Context, p *models.Product) error {
 	var err error
-	stmt, err := tools.RelationalDB.Prepare("insert into products (amount, id, title, price, currency) values (?, ?, ?, ?, ?)")
+	stmt, err := tools.RelationalDB.Prepare("insert into products (amount, id, title, price, currency) values ($1, $2, $3, $4, $5)")
 	if err != nil {
 		return err
 	}

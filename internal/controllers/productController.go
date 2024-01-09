@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
 	"palyvoua/internal/repository"
-	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
 
@@ -18,11 +18,11 @@ func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userReposit
 	productGroup := r.Group("/product")
 	pc := productController{productRepo: pr}
 
-	productGroup.Use(auth.AuthMiddleware(ur))
+	//productGroup.Use(auth.AuthMiddleware(ur))
 	//productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
 	productGroup.GET("/all", jsonHelper.MakeHttpHandler(pc.getAllProducts))
 	productGroup.GET("/:id", jsonHelper.MakeHttpHandler(pc.createProduct))
-	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
+	//productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
 	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.createProduct))
 }
@@ -65,7 +65,7 @@ func (pc *productController) getAllProducts(c *gin.Context) error {
 }
 
 func (pc *productController) createProduct(c *gin.Context) error {
-
+	fmt.Println("creating...")
 	var body CreateProductRequest
 	if err := c.Bind(&body);err!=nil {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
@@ -84,7 +84,15 @@ func (pc *productController) createProduct(c *gin.Context) error {
 		Price:    body.Price,
 		Currency: body.Currency,
 	}
-	pc.productRepo.SaveProduct(context.Background(), &p)
+	err = pc.productRepo.SaveProduct(context.Background(), &p)
+	if err != nil {
+		fmt.Println("error")
+		fmt.Println(err.Error())
+		return jsonHelper.ApiError{
+			Err:    "Internal server error",
+			Status: 500,
+		}
+	}
 	c.JSON(200, gin.H{})
 	return nil
 }

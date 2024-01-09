@@ -33,7 +33,7 @@ func ConnectToPostgres() {
 	password := os.Getenv("POSTGRES_PASSWORD")
 	dbname := os.Getenv("POSTGRES_DB_NAME")
 	host := os.Getenv("POSTGRES_HOST")
-	
+
 	connStr := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable", host, username, password, dbname)
 
 	db, err := sql.Open("postgres", connStr)
@@ -41,7 +41,6 @@ func ConnectToPostgres() {
 		log.Printf("Error while connecting to PostgreSQL: %v", err)
 		log.Fatal(err)
 	}
-	defer db.Close()
 
 	createTableSQL := `CREATE TABLE IF NOT EXISTS products (
 		amount INTEGER,
