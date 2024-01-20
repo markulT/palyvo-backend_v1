@@ -16,6 +16,10 @@ type ProductRepo interface {
 	SaveProduct(context.Context, *models.Product) error
 	DeleteProduct(c context.Context, pid uuid.UUID) error
 	UpdateProductAmount(c context.Context, pid uuid.UUID, amount int) error
+	GetByFuelType(c context.Context, fuelType string) ([]models.Product, error)
+	GetBySeller(c context.Context, seller string) ([]models.Product, error)
+	GetBySellerAndFuelType(c context.Context, seller string, fuelType string) ([]models.Product, error)
+	UpdateProductStripeID(c context.Context, pID uuid.UUID, newStripeID string) error
 }
 
 func NewProductRepo() ProductRepo {
@@ -23,6 +27,22 @@ func NewProductRepo() ProductRepo {
 }
 
 type defaultProductRepo struct {}
+
+func (pr *defaultProductRepo) UpdateProductStripeID(c context.Context, pID uuid.UUID, newStripeID string) error{
+	return nil
+}
+
+func (pr *defaultProductRepo) GetBySeller(c context.Context, seller string) ([]models.Product, error) {
+	return nil,nil
+}
+
+func (pr *defaultProductRepo) GetBySellerAndFuelType(c context.Context, seller string, fuelType string) ([]models.Product, error) {
+	return nil, nil
+}
+
+func (pr *defaultProductRepo) GetByFuelType(c context.Context, fuelType string) ([]models.Product, error) {
+	return nil, nil
+}
 
 func (pr *defaultProductRepo) GetAllProducts(c context.Context) ([]models.Product, error) {
 	return nil,nil

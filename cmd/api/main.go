@@ -25,6 +25,7 @@ func main() {
 	ticketRepo := repository.NewTickerRepo()
 	stripePaymentService := payment.NewStripePaymentService()
 	consistentProductRepo := repository.NewConsistentProductRepo()
+	productTicketRepo := repository.NewProductTicketRepo()
 
 	r.Use(jsonHelper.CORSMiddleware())
 
@@ -40,9 +41,9 @@ func main() {
 
 	controllers.SetupAuthRoutes(r, userRepo, stripePaymentService)
 	controllers.SetupOperatorRoutes(r, userRepo, adminRepo, ticketRepo)
-	controllers.SetupPaymentRoutes(r, userRepo,stripePaymentService, ticketRepo, consistentProductRepo)
+	controllers.SetupPaymentRoutes(r, userRepo,stripePaymentService, ticketRepo, consistentProductRepo, productTicketRepo)
 	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
-	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo)
+	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo, stripePaymentService)
 	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
 
 	r.Run()

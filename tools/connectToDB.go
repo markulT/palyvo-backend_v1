@@ -47,7 +47,10 @@ func ConnectToPostgres() {
 		id UUID PRIMARY KEY,
 		title TEXT,
 		price INTEGER,
-		currency TEXT
+		currency TEXT,
+		seller TEXT,
+		fuel_type TEXT,
+		stripe_id TEXT
 	);`
 
 	_, err = db.Exec(createTableSQL)

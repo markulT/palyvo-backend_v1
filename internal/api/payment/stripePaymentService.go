@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/charge"
+	"github.com/stripe/stripe-go/v75/checkout/session"
 	"github.com/stripe/stripe-go/v75/customer"
 	"github.com/stripe/stripe-go/v75/paymentmethod"
+	"github.com/stripe/stripe-go/v75/price"
+	"github.com/stripe/stripe-go/v75/product"
 	"github.com/stripe/stripe-go/v75/setupintent"
+	"palyvoua/internal/models"
 )
 
 type PaymentError struct {}
@@ -22,6 +26,8 @@ type PaymentService interface {
 	ChargeCustomer(customerID string, amount int) (string, error)
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
+	SaveProduct(p *models.ProductTicket) (*stripe.Product,error)
+	CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error)
 }
 
 func NewStripePaymentService() PaymentService {
@@ -30,6 +36,59 @@ func NewStripePaymentService() PaymentService {
 
 type stripePaymentService struct {
 
+}
+
+func (s *stripePaymentService) CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error) {
+	priceParams := &stripe.PriceListParams{
+		Product: stripe.String(productStripeID),
+	}
+	i := price.List(priceParams)
+	var priceId string
+	for i.Next() {
+		p := i.Price()
+		priceId = p.ID
+	}
+
+	// Create a checkout session with the product's price
+	params := &stripe.CheckoutSessionParams{
+		PaymentMethodTypes: stripe.StringSlice([]string{
+			"card",
+		}),
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Price:    stripe.String(priceId),
+				Quantity: stripe.Int64(1),
+			},
+		},
+		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL: stripe.String("https://example.com/success"),
+		CancelURL: stripe.String("https://example.com/cancel"),
+	}
+
+	sess, err := session.New(params)
+	return sess,err
+}
+
+
+func (s *stripePaymentService) SaveProduct(p *models.ProductTicket) (*stripe.Product,error) {
+	stripeProduct, err := product.New(&stripe.ProductParams{
+		Name: stripe.String(p.Title),
+		Type: stripe.String(string(stripe.ProductTypeGood)),
+		Metadata: map[string]string{
+			"title":     p.Title,
+			"productID": p.ID.String(),
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	_, err = price.New(&stripe.PriceParams{
+		Product:    stripe.String(stripeProduct.ID),
+		UnitAmount: stripe.Int64(int64(p.Price)), // price in cents
+		Currency:   stripe.String(p.Currency),
+	})
+
+	return stripeProduct,nil
 }
 
 func (s *stripePaymentService) GetCustomerByID(cid string) (*stripe.Customer, error) {

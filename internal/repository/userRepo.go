@@ -11,6 +11,7 @@ type UserRepo interface {
 	SaveUser(*models.User) error
 	GetUserByEmail(email string) (models.User, error)
 	UpdateCustomerIDByEmail(email string, cid string) error
+	GetByCustomerID(cID string) (models.User,error)
 }
 
 func NewUserRepo() UserRepo {
@@ -19,6 +20,20 @@ func NewUserRepo() UserRepo {
 
 type defaultUserRepo struct {
 
+}
+
+func (d *defaultUserRepo) GetByCustomerID(cID string) (models.User,error) {
+	var user models.User
+	var err error
+	userCollection := tools.DB.Collection("users")
+	res :=userCollection.FindOne(context.Background(), bson.M{"customerId":cID})
+	if err = res.Err();err!=nil {
+		return models.User{}, err
+	}
+	if err = res.Decode(&user);err!=nil {
+		return models.User{}, nil
+	}
+	return user,nil
 }
 
 func (d *defaultUserRepo) SaveUser(user *models.User) error {

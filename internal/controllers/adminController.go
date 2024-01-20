@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
-	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
 
@@ -27,8 +26,8 @@ func SetupAdminRoutes(r *gin.Engine, ar adminRepo, ur userRepository) {
 
 	ac := adminController{ar, ur}
 
-	adminGroup.Use(auth.AuthMiddleware(ur))
-	adminGroup.Use(auth.RoleMiddleware(2, ur ,ar))
+	//adminGroup.Use(auth.AuthMiddleware(ur))
+	//adminGroup.Use(auth.RoleMiddleware(2, ur ,ar))
 	adminGroup.GET("/role", jsonHelper.MakeHttpHandler(ac.getAllRoles))
 	adminGroup.POST("/role", jsonHelper.MakeHttpHandler(ac.createRole))
 	adminGroup.DELETE("/role/:id", jsonHelper.MakeHttpHandler(ac.deleteRoleByID))

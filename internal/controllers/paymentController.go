@@ -2,11 +2,15 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/checkout/session"
 	"github.com/stripe/stripe-go/v75/paymentmethod"
+	"github.com/stripe/stripe-go/v75/webhook"
+	"io"
 	"os"
 	"palyvoua/internal/models"
 	"palyvoua/internal/repository"
@@ -21,6 +25,7 @@ type paymentController struct {
 	paymentService
 	ticketRepo repository.TicketRepo
 	productRepo repository.ProductRepo
+	productTicketRepo repository.ProductTicketRepo
 }
 
 type paymentService interface {
@@ -31,11 +36,12 @@ type paymentService interface {
 	ChargeCustomer(customerID string, amount int) (string, error)
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
+	SaveProduct(product *models.ProductTicket) (*stripe.Product, error)
+	CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error)
 }
 
-func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo) {
-	paymentGroup := r.Group("/payment")
-	pc := paymentController{userRepo: ur, paymentService: ps, ticketRepo: tr, productRepo: pr}
+func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo, ptr repository.ProductTicketRepo) {	paymentGroup := r.Group("/payment")
+	pc := paymentController{userRepo: ur, paymentService: ps, ticketRepo: tr, productRepo: pr, productTicketRepo: ptr}
 
 	paymentGroup.Use(auth.AuthMiddleware(ur))
 	paymentGroup.POST("/method/setDefault", jsonHelper.MakeHttpHandler(pc.setDefaultPaymentMethod))
@@ -43,9 +49,129 @@ func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr 
 	paymentGroup.GET("/paymentMethod/getDefault", jsonHelper.MakeHttpHandler(pc.getDefaultPaymentMethod))
 	paymentGroup.DELETE("/paymentMethod/delete/:id", jsonHelper.MakeHttpHandler(pc.deletePaymentMethod))
 
-	paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
+	//paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
 	paymentGroup.POST("/setupIntent/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
+	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
+	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
+}
 
+func (sc *paymentController) webhookHandler(c *gin.Context) error {
+	requestBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    err.Error(),
+			Status: 400,
+		}
+	}
+	event, err := webhook.ConstructEvent(requestBody, c.GetHeader("Stripe-Signature"), "whsec_OfBPfcD0lNo0PNqYdOQmOdrlsBcLD8Gt")
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    err.Error(),
+			Status: 400,
+		}
+	}
+
+	switch event.Type {
+	case "checkout.session.async_payment_succeeded":
+
+	case "checkout.session.completed":
+		var checkoutSession stripe.CheckoutSession
+		err:=json.Unmarshal(event.Data.Raw, &checkoutSession)
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    err.Error(),
+				Status: 500,
+			}
+		}
+		user,err:=sc.userRepo.GetByCustomerID(checkoutSession.Customer.ID)
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    err.Error(),
+				Status: 500,
+			}
+		}
+		expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    "Internal server error",
+				Status: 500,
+			}
+		}
+		var param ="line_items"
+		sess, err := session.Get(event.Data.Object["id"].(string), &stripe.CheckoutSessionParams{
+			Expand: []*string{&param},
+		})
+
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    err.Error(),
+				Status: 500,
+			}
+		}
+
+		err = sc.ticketRepo.WithTransaction(c, func(c context.Context) error {
+			stripeProductID := sess.LineItems.Data[0].ID
+			productTicket,err := sc.productTicketRepo.GetByID(c, uuid.MustParse(stripeProductID))
+			if err != nil {
+				return jsonHelper.ApiError{
+					Err:    "Internal server error",
+					Status: 500,
+				}
+			}
+			ticketID, _ := uuid.NewRandom()
+			ticket := models.Ticket{
+				CreatedAt: int(time.Now().Unix()),
+				ExpiresAt: int(time.Now().Add(time.Hour * 24 * time.Duration(expirationTerm)).Unix()),
+				ID: ticketID,
+				UserId: user.ID,
+				Status: models.NOT_ACTIVATED,
+				Amount: productTicket.Amount,
+			}
+			ticket.SetSecret("Huy")
+
+			err = sc.ticketRepo.Create(c,ticket)
+			if err != nil {
+				return jsonHelper.ApiError{
+					Err:    err.Error(),
+					Status: 500,
+				}
+			}
+
+			sc.ticketRepo.UpdatePaymentID(ticketID, checkoutSession.PaymentIntent.ID)
+			err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
+			if err != nil {
+				return jsonHelper.ApiError{
+					Err:    err.Error(),
+					Status: 500,
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    err.Error(),
+				Status: 500,
+			}
+		}
+
+
+	}
+	return nil
+}
+
+func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
+	productStripeID := c.Query("productStripeId")
+
+	sess,err := sc.paymentService.CreateCheckoutSession(productStripeID)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "Internal server error",
+			Status: 500,
+		}
+	}
+	c.JSON(200, gin.H{"sessionId":sess.ID})
+	return nil
 }
 
 type CreateSetupIntentRequest struct{}

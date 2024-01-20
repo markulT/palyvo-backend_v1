@@ -20,6 +20,7 @@ type userRepository interface {
 	SaveUser(*models.User) error
 	GetUserByEmail(email string) (models.User, error)
 	UpdateCustomerIDByEmail(email string, cid string) error
+	GetByCustomerID(cID string) (models.User,error)
 }
 
 func SetupAuthRoutes(r *gin.Engine, authRepo userRepository, ps paymentService) {
@@ -157,9 +158,9 @@ func (ac *authController) register(c *gin.Context) error {
 		}
 	}
 
-	//role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
+	role,err := adminRepo.GetRoleByName("ROLE_ADMIN")
 	//role,err := adminRepo.GetRoleByName("ROLE_OPERATOR")
-	role,err := adminRepo.GetRoleByName("ROLE_USER")
+	//role,err := adminRepo.GetRoleByName("ROLE_USER")
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "No role found",

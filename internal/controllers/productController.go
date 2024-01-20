@@ -13,22 +13,68 @@ import (
 
 type productController struct {
 	productRepo repository.ProductRepo
+	paymentService paymentService
 }
 
-func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userRepository, adminRepo adminRepo) {
+func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userRepository, adminRepo adminRepo, ps paymentService) {
 	productGroup := r.Group("/product")
-	pc := productController{productRepo: pr}
+	pc := productController{productRepo: pr, paymentService: ps}
 
 	productGroup.Use(auth.AuthMiddleware(ur))
 	//productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
 	productGroup.GET("/all", jsonHelper.MakeHttpHandler(pc.getAllProducts))
-	productGroup.GET("/:id", jsonHelper.MakeHttpHandler(pc.createProduct))
+	productGroup.GET("/:id", jsonHelper.MakeHttpHandler(pc.getProductByID))
+	productGroup.GET("/byFuelType", jsonHelper.MakeHttpHandler(pc.getByFuelType))
+	productGroup.GET("/bySeller", jsonHelper.MakeHttpHandler(pc.getBySeller))
 	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
 	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.createProduct))
+
+
+
 }
 
-func (pc *paymentController) getProductByID(c *gin.Context) error {
+type CreateStripeProductRequest struct {
+	Price int `json:"price"`
+
+}
+
+func (pc *productController) getByFuelType(c *gin.Context) error {
+	fuelTypeField := c.Query("fuelType")
+	var products []models.Product
+	var err error
+
+	products, err = pc.productRepo.GetByFuelType(context.Background(), fuelTypeField)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "Error occurred while receiving product",
+			Status: 500,
+		}
+	}
+
+	c.JSON(200, gin.H{"products":products})
+	return nil
+}
+
+
+func (pc *productController) getBySeller(c *gin.Context) error {
+	fuelTypeField := c.Query("seller")
+	var products []models.Product
+	var err error
+
+	products, err = pc.productRepo.GetBySeller(context.Background(), fuelTypeField)
+	if err != nil {
+		return jsonHelper.ApiError{
+			Err:    "Error occurred while receiving product",
+			Status: 500,
+		}
+	}
+
+	c.JSON(200, gin.H{"products":products})
+	return nil
+}
+
+func (pc *productController) getProductByID(c *gin.Context) error {
 	productIDField := c.Param("id")
 	productID, err := uuid.Parse(productIDField)
 	if err != nil {
@@ -48,6 +94,8 @@ type CreateProductRequest struct {
 	Title string `json:"title" bson:"title"`
 	Price int `json:"price" bson:"price"`
 	Currency string `json:"currency" bson:"currency"`
+	Seller string `json:"seller" bson:"seller"`
+	FuelType string `json:"fuelType" bson:"fuelType"`
 }
 
 func (pc *productController) getAllProducts(c *gin.Context) error {
@@ -66,7 +114,7 @@ func (pc *productController) getAllProducts(c *gin.Context) error {
 }
 
 func (pc *productController) createProduct(c *gin.Context) error {
-	fmt.Println("creating...")
+
 	var body CreateProductRequest
 	if err := c.Bind(&body);err!=nil {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
@@ -84,6 +132,8 @@ func (pc *productController) createProduct(c *gin.Context) error {
 		Title:    body.Title,
 		Price:    body.Price,
 		Currency: body.Currency,
+		Seller: body.Seller,
+		FuelType: body.FuelType,
 	}
 	err = pc.productRepo.SaveProduct(context.Background(), &p)
 	if err != nil {
@@ -94,6 +144,7 @@ func (pc *productController) createProduct(c *gin.Context) error {
 			Status: 500,
 		}
 	}
+
 	c.JSON(200, gin.H{})
 	return nil
 }
