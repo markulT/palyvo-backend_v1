@@ -51,7 +51,7 @@ func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr 
 
 	//paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
 	paymentGroup.POST("/setupIntent/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
-	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
+	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createCheckoutSession))
 	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
 }
 
