@@ -15,10 +15,10 @@ type productTicketController struct {
 	productTicketRepo repository.ProductTicketRepo
 }
 
-func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userRepository, productTicketRepo repository.ProductTicketRepo) {
+func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userRepository, productTicketRepo repository.ProductTicketRepo, ps paymentService) {
 	productTicketGroup := r.Group("/productTicket")
 
-	ptc := productTicketController{productTicketRepo: productTicketRepo}
+	ptc := productTicketController{productTicketRepo: productTicketRepo, paymentService: ps}
 
 	productTicketGroup.Use(auth.AuthMiddleware(ur))
 
@@ -27,8 +27,8 @@ func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userReposit
 	productTicketGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 
 	productTicketGroup.POST("/create", jsonHelper.MakeHttpHandler(ptc.createProductTicket))
-	productTicketGroup.DELETE("/", jsonHelper.MakeHttpHandler(ptc.deleteProductTicket))
-	productTicketGroup.PUT("/", jsonHelper.MakeHttpHandler(ptc.updateProductTicket))
+	productTicketGroup.DELETE("", jsonHelper.MakeHttpHandler(ptc.deleteProductTicket))
+	productTicketGroup.PUT("", jsonHelper.MakeHttpHandler(ptc.updateProductTicket))
 }
 
 type UpdateProductTicketRequest struct {

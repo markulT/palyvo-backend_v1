@@ -28,8 +28,7 @@ func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userReposit
 	productGroup.GET("/bySeller", jsonHelper.MakeHttpHandler(pc.getBySeller))
 	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
-	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.createProduct))
-
+	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.updateProductAmount))
 
 
 }
@@ -104,6 +103,7 @@ func (pc *productController) getAllProducts(c *gin.Context) error {
 
 	products, err := pc.productRepo.GetAllProducts(context.Background())
 	if err != nil {
+		fmt.Println(err.Error())
 		return jsonHelper.ApiError{
 			Err:    "No products",
 			Status: 500,
@@ -114,9 +114,10 @@ func (pc *productController) getAllProducts(c *gin.Context) error {
 }
 
 func (pc *productController) createProduct(c *gin.Context) error {
-
+	fmt.Println("at least came here")
 	var body CreateProductRequest
-	if err := c.Bind(&body);err!=nil {
+	if err := c.Bind(&body);err!=nil{
+		fmt.Println(err)
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
 	productID,err := uuid.NewRandom()
@@ -139,6 +140,13 @@ func (pc *productController) createProduct(c *gin.Context) error {
 	if err != nil {
 		fmt.Println("error")
 		fmt.Println(err.Error())
+		return jsonHelper.ApiError{
+			Err:    "Internal server error",
+			Status: 500,
+		}
+	}
+
+	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Internal server error",
 			Status: 500,

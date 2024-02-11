@@ -87,6 +87,9 @@ func (s *stripePaymentService) SaveProduct(p *models.ProductTicket) (*stripe.Pro
 		UnitAmount: stripe.Int64(int64(p.Price)), // price in cents
 		Currency:   stripe.String(p.Currency),
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return stripeProduct,nil
 }

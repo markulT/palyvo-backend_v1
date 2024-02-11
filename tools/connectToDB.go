@@ -49,8 +49,7 @@ func ConnectToPostgres() {
 		price INTEGER,
 		currency TEXT,
 		seller TEXT,
-		fuel_type TEXT,
-		stripe_id TEXT
+		fuel_type TEXT
 	);`
 
 	_, err = db.Exec(createTableSQL)
