@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
@@ -141,6 +142,7 @@ func (ptc *productTicketController) createProductTicket(c *gin.Context) error {
 			Status: 500,
 		}
 	}
+	fmt.Println(stripeProduct.ID)
 	updatedProductTicket, err := ptc.productTicketRepo.UpdateStripeProductID(context.Background(),productTicketID, stripeProduct.ID)
 	if err != nil {
 		return jsonHelper.ApiError{

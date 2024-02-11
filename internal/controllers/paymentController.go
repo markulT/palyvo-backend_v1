@@ -43,6 +43,8 @@ type paymentService interface {
 func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo, ptr repository.ProductTicketRepo) {	paymentGroup := r.Group("/payment")
 	pc := paymentController{userRepo: ur, paymentService: ps, ticketRepo: tr, productRepo: pr, productTicketRepo: ptr}
 
+	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
+
 	paymentGroup.Use(auth.AuthMiddleware(ur))
 	paymentGroup.POST("/method/setDefault", jsonHelper.MakeHttpHandler(pc.setDefaultPaymentMethod))
 	paymentGroup.GET("/paymentMethod/getAll", jsonHelper.MakeHttpHandler(pc.paymentMethodsHandler))
@@ -52,7 +54,6 @@ func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr 
 	//paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
 	paymentGroup.POST("/setupIntent/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
 	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createCheckoutSession))
-	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
 }
 
 func (sc *paymentController) webhookHandler(c *gin.Context) error {
