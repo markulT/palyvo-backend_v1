@@ -64,7 +64,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 			Status: 400,
 		}
 	}
-	event, err := webhook.ConstructEvent(requestBody, c.GetHeader("Stripe-Signature"), "whsec_OfBPfcD0lNo0PNqYdOQmOdrlsBcLD8Gt")
+	event, err := webhook.ConstructEvent(requestBody, c.GetHeader("Stripe-Signature"), os.Getenv("WEBHOOK_SECRET_STRIPE"))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
