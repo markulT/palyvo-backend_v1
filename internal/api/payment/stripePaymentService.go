@@ -27,7 +27,7 @@ type PaymentService interface {
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(p *models.ProductTicket) (*stripe.Product,error)
-	CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error)
+	CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error)
 }
 
 func NewStripePaymentService() PaymentService {
@@ -38,7 +38,7 @@ type stripePaymentService struct {
 
 }
 
-func (s *stripePaymentService) CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error) {
+func (s *stripePaymentService) CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error) {
 	priceParams := &stripe.PriceListParams{
 		Product: stripe.String(productStripeID),
 	}
@@ -51,6 +51,7 @@ func (s *stripePaymentService) CreateCheckoutSession(productStripeID string) (*s
 
 	// Create a checkout session with the product's price
 	params := &stripe.CheckoutSessionParams{
+		Customer: stripe.String(customerID),
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),

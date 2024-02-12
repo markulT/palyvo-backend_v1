@@ -37,7 +37,7 @@ type paymentService interface {
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(product *models.ProductTicket) (*stripe.Product, error)
-	CreateCheckoutSession(productStripeID string) (*stripe.CheckoutSession, error)
+	CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error)
 }
 
 func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo, ptr repository.ProductTicketRepo) {	paymentGroup := r.Group("/payment")
@@ -164,7 +164,17 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
 	productStripeID := c.Query("productStripeId")
 
-	sess,err := sc.paymentService.CreateCheckoutSession(productStripeID)
+	userField, exists := c.Get("user")
+	if !exists {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, ok := userField.(models.User)
+	if !ok {
+
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+
+	sess,err := sc.paymentService.CreateCheckoutSession(productStripeID, user.CustomerID)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Internal server error",
