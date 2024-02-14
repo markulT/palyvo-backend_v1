@@ -12,6 +12,7 @@ import (
 	"github.com/stripe/stripe-go/v75/webhook"
 	"io"
 	"os"
+	"palyvoua/internal/api/payment"
 	"palyvoua/internal/models"
 	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
@@ -37,7 +38,7 @@ type paymentService interface {
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(product *models.ProductTicket) (*stripe.Product, error)
-	CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error)
+	CreateCheckoutSession(productList []payment.ProductDto, customerID string) (*stripe.CheckoutSession, error)
 }
 
 func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo, ptr repository.ProductTicketRepo) {	paymentGroup := r.Group("/payment")
@@ -161,8 +162,11 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 	return nil
 }
 
+type CreateCheckoutSessionRequest struct {
+	ProductList []payment.ProductDto `json:"productList" bson:"productList"`
+}
+
 func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
-	productStripeID := c.Query("productStripeId")
 
 	userField, exists := c.Get("user")
 	if !exists {
@@ -174,13 +178,20 @@ func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
 		return jsonHelper.DefaultHttpErrors["400"]
 	}
 
-	sess,err := sc.paymentService.CreateCheckoutSession(productStripeID, user.CustomerID)
+	var body CreateCheckoutSessionRequest
+	if err:=c.Bind(&body);err!=nil{
+		return jsonHelper.DefaultHttpErrors["BadRequest"]
+	}
+
+	sess,err := sc.paymentService.CreateCheckoutSession(body.ProductList, user.CustomerID)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Internal server error",
 			Status: 500,
 		}
 	}
+	fmt.Println(*sess)
+	fmt.Println(sess.PaymentIntent)
 	c.JSON(200, gin.H{"sessionId":sess.ID})
 	return nil
 }

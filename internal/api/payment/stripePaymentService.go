@@ -27,7 +27,12 @@ type PaymentService interface {
 	CreateSetupIntent(cid string) (*stripe.SetupIntent, error)
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(p *models.ProductTicket) (*stripe.Product,error)
-	CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error)
+	CreateCheckoutSession(productList []ProductDto, customerID string) (*stripe.CheckoutSession, error)
+}
+
+type ProductDto struct {
+	ProductStripeID string `bson:"productStripeId" json:"productStripeId"`
+	Amount int `json:"amount" bson:"amount"`
 }
 
 func NewStripePaymentService() PaymentService {
@@ -38,16 +43,25 @@ type stripePaymentService struct {
 
 }
 
-func (s *stripePaymentService) CreateCheckoutSession(productStripeID string, customerID string) (*stripe.CheckoutSession, error) {
-	priceParams := &stripe.PriceListParams{
-		Product: stripe.String(productStripeID),
+func (s *stripePaymentService) CreateCheckoutSession(productList []ProductDto, customerID string) (*stripe.CheckoutSession, error) {
+
+	var lineItems []*stripe.CheckoutSessionLineItemParams
+
+	for _, p := range productList {
+
+		quanity := int64(p.Amount)
+		lineItem := stripe.CheckoutSessionLineItemParams{
+			Price: stripe.String(p.ProductStripeID),
+			Quantity: &quanity,
+		}
+		lineItems = append(lineItems, &lineItem)
 	}
-	i := price.List(priceParams)
-	var priceId string
-	for i.Next() {
-		p := i.Price()
-		priceId = p.ID
-	}
+	//i := price.List(priceParams)
+	//var priceId string
+	//for i.Next() {
+	//	p := i.Price()
+	//	priceId = p.ID
+	//}
 
 	// Create a checkout session with the product's price
 	params := &stripe.CheckoutSessionParams{
@@ -55,12 +69,7 @@ func (s *stripePaymentService) CreateCheckoutSession(productStripeID string, cus
 		PaymentMethodTypes: stripe.StringSlice([]string{
 			"card",
 		}),
-		LineItems: []*stripe.CheckoutSessionLineItemParams{
-			{
-				Price:    stripe.String(priceId),
-				Quantity: stripe.Int64(1),
-			},
-		},
+		LineItems: lineItems,
 		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
 		SuccessURL: stripe.String("https://example.com/success"),
 		CancelURL: stripe.String("https://example.com/cancel"),
