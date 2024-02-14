@@ -43,16 +43,40 @@ type stripePaymentService struct {
 
 }
 
+func (s *stripePaymentService) getPriceIDByProductID(productID string) (string, error) {
+
+	var err error
+	params := &stripe.PriceListParams{
+		Product: stripe.String(productID),
+	}
+
+	pricesIterator := price.List(params)
+
+	if err = pricesIterator.Err();err != nil {
+		return "", err
+	}
+
+	priceList := pricesIterator.PriceList()
+	return priceList.Data[0].ID, nil
+}
+
 func (s *stripePaymentService) CreateCheckoutSession(productList []ProductDto, customerID string) (*stripe.CheckoutSession, error) {
 
 	var lineItems []*stripe.CheckoutSessionLineItemParams
 
 	for _, p := range productList {
 
-		quanity := int64(p.Amount)
+		quantity := int64(p.Amount)
+
+		priceID, err := s.getPriceIDByProductID(p.ProductStripeID)
+
+		if err!=nil {
+			return nil, err
+		}
+
 		lineItem := stripe.CheckoutSessionLineItemParams{
-			Price: stripe.String(p.ProductStripeID),
-			Quantity: &quanity,
+			Price: stripe.String(priceID),
+			Quantity: &quantity,
 		}
 		lineItems = append(lineItems, &lineItem)
 	}
@@ -64,6 +88,9 @@ func (s *stripePaymentService) CreateCheckoutSession(productList []ProductDto, c
 	//}
 
 	// Create a checkout session with the product's price
+
+	fmt.Println("ZALUPA")
+	fmt.Println(*lineItems[0])
 	params := &stripe.CheckoutSessionParams{
 		Customer: stripe.String(customerID),
 		PaymentMethodTypes: stripe.StringSlice([]string{

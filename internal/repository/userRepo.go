@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"palyvoua/internal/models"
 	"palyvoua/tools"
@@ -28,10 +29,12 @@ func (d *defaultUserRepo) GetByCustomerID(cID string) (models.User,error) {
 	userCollection := tools.DB.Collection("users")
 	res :=userCollection.FindOne(context.Background(), bson.M{"customerId":cID})
 	if err = res.Err();err!=nil {
+		fmt.Println(err)
 		return models.User{}, err
 	}
 	if err = res.Decode(&user);err!=nil {
-		return models.User{}, nil
+		fmt.Println(err)
+		return models.User{}, err
 	}
 	return user,nil
 }

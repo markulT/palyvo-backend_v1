@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"palyvoua/internal/models"
@@ -104,6 +105,8 @@ func (d *defaultProductTicketRepo) GetByStripeProductID(ctx context.Context, s s
 	var pt models.ProductTicket
 	var err error
 	productTicketCollection := tools.DB.Collection("productTickets")
+	fmt.Println("searching by this stripe id")
+	fmt.Println(s)
 	res := productTicketCollection.FindOne(ctx, bson.M{"stripeProductId":s})
 	if res.Err() != nil {
 		return models.ProductTicket{}, res.Err()

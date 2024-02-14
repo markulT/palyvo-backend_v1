@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
@@ -21,7 +22,7 @@ type ticketRepo interface {
 	GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error)
 	GetByID(uuid.UUID) (models.Ticket, error)
 	UpdateStatus(uuid.UUID, string) error
-	UpdatePaymentID(uuid.UUID, string) error
+	UpdatePaymentID(context.Context,uuid.UUID, string) error
 }
 
 //type ticketControllerOptions func(*ticketController)

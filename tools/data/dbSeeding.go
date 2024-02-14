@@ -13,6 +13,11 @@ func (s *defaultDBSeeder) SeedDB() error {
 		return err
 	}
 
+	err = s.createDefaultUsers()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

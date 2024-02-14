@@ -19,5 +19,5 @@ type ProductTicket struct {
 	Title string `json:"title" bson:"title"`
 	Price int `json:"price" bson:"price"`
 	Currency string `json:"currency" bson:"currency"`
-	StripeID string `bson:"stripeId" json:"stripeId"`
+	StripeID string `bson:"stripeProductId" json:"stripeProductId"`
 }

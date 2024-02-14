@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,7 +21,7 @@ type TicketRepo interface {
 	GetAll() ([]models.Ticket, error)
 	GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error)
 	UpdateStatus(uuid.UUID, string) error
-	UpdatePaymentID(uuid.UUID,string) error
+	UpdatePaymentID(context.Context,uuid.UUID,string) error
 }
 
 func NewTickerRepo() TicketRepo {
@@ -29,15 +30,16 @@ func NewTickerRepo() TicketRepo {
 
 type defaultTicketRepo struct {}
 
-func (d *defaultTicketRepo) UpdatePaymentID(u uuid.UUID, s string) error {
-	ticketCollection := tools.DB.Collection("ticket")
-	_,err := ticketCollection.UpdateByID(context.TODO(), u, bson.M{"paymentId":s})
+func (d *defaultTicketRepo) UpdatePaymentID(c context.Context,u uuid.UUID, s string) error {
+	ticketCollection := tools.DB.Collection("tickets")
+	fmt.Println("updating")
+	_,err := ticketCollection.UpdateByID(c, u, bson.M{"$set":bson.M{"paymentId":s, "status":models.ACTIVATED}})
 	return err
 }
 
 func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	ticketCollection := tools.DB.Collection("ticket")
+	ticketCollection := tools.DB.Collection("tickets")
 	cursor, err := ticketCollection.Find(context.TODO(), bson.M{})
 	if err != nil {
 		return nil, err
@@ -57,7 +59,7 @@ func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {
 
 func (d *defaultTicketRepo) GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	ticketCollection := tools.DB.Collection("ticket")
+	ticketCollection := tools.DB.Collection("tickets")
 	cursor, err := ticketCollection.Find(context.TODO(), bson.M{"userId":userID})
 	if err != nil {
 		return nil, err
@@ -76,20 +78,22 @@ func (d *defaultTicketRepo) GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ti
 }
 
 func (d *defaultTicketRepo) UpdateStatus(u uuid.UUID, s string) error {
-	ticketCollection := tools.DB.Collection("ticket")
+	ticketCollection := tools.DB.Collection("tickets")
 	_,err := ticketCollection.UpdateByID(context.TODO(), u, bson.M{"$set":bson.M{"status":s}})
 	return err
 }
 
 func (d *defaultTicketRepo) Create(c context.Context, ticket models.Ticket) error {
-	ticketCollection := tools.DB.Collection("ticket")
+	fmt.Println("saving huynia")
+	fmt.Println(ticket)
+	ticketCollection := tools.DB.Collection("tickets")
 	_, err := ticketCollection.InsertOne(c, ticket)
 	return err
 }
 
 func (d *defaultTicketRepo) GetByID(id uuid.UUID) (models.Ticket, error) {
 	var ticket models.Ticket
-	ticketCollection := tools.DB.Collection("ticket")
+	ticketCollection := tools.DB.Collection("tickets")
 	err := ticketCollection.FindOne(context.TODO(), bson.M{"_id":id}).Decode(&ticket)
 	if err != nil {
 		return models.Ticket{}, err
@@ -98,7 +102,7 @@ func (d *defaultTicketRepo) GetByID(id uuid.UUID) (models.Ticket, error) {
 }
 
 func (d *defaultTicketRepo) DeleteByID(id uuid.UUID) error {
-	ticketCollection := tools.DB.Collection("ticket")
+	ticketCollection := tools.DB.Collection("tickets")
 	_,err := ticketCollection.DeleteOne(context.TODO(), bson.M{"_id":id})
 	return err
 }

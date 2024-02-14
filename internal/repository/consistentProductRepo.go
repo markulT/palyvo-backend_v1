@@ -156,7 +156,7 @@ func (cpr *consistentProductRepo) DeleteProduct(c context.Context, pid uuid.UUID
 func (cpr *consistentProductRepo) DecreaseProductAmount(c context.Context, pid uuid.UUID, amount int) error {
 	//TODO implement me
 
-	tx, err := tools.RelationalDB.BeginTx(nil, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	tx, err := tools.RelationalDB.BeginTx(c, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		tx.Rollback()
 		return err

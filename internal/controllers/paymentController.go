@@ -85,6 +85,20 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				Status: 500,
 			}
 		}
+
+		var param ="line_items"
+		sess, err := session.Get(event.Data.Object["id"].(string), &stripe.CheckoutSessionParams{
+			Expand: []*string{&param},
+		})
+		fmt.Println(*sess)
+		fmt.Println(*sess.LineItems)
+		fmt.Println(*sess.LineItems.Data[0])
+
+		for _, pisiun := range sess.LineItems.Data {
+			fmt.Println(pisiun)
+			fmt.Println(pisiun.Quantity)
+		}
+
 		user,err:=sc.userRepo.GetByCustomerID(checkoutSession.Customer.ID)
 		if err != nil {
 			return jsonHelper.ApiError{
@@ -99,10 +113,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				Status: 500,
 			}
 		}
-		var param ="line_items"
-		sess, err := session.Get(event.Data.Object["id"].(string), &stripe.CheckoutSessionParams{
-			Expand: []*string{&param},
-		})
+
 
 		if err != nil {
 			return jsonHelper.ApiError{
@@ -112,9 +123,10 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 		}
 
 		err = sc.ticketRepo.WithTransaction(c, func(c context.Context) error {
-			stripeProductID := sess.LineItems.Data[0].ID
+			stripeProductID := sess.LineItems.Data[0].Price.Product.ID
 			productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, stripeProductID)
 			if err != nil {
+				fmt.Println("failed to get by some huynia")
 				return jsonHelper.ApiError{
 					Err:    "Internal server error: " + err.Error() ,
 					Status: 500,
@@ -133,13 +145,22 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 
 			err = sc.ticketRepo.Create(c,ticket)
 			if err != nil {
+				fmt.Println("huynia")
+				fmt.Println(err.Error())
 				return jsonHelper.ApiError{
 					Err:    err.Error(),
 					Status: 500,
 				}
 			}
-
-			sc.ticketRepo.UpdatePaymentID(ticketID, checkoutSession.PaymentIntent.ID)
+			err = sc.ticketRepo.UpdatePaymentID(c,ticketID, checkoutSession.PaymentIntent.ID)
+			if err != nil {
+				fmt.Println("error updating payment id")
+				fmt.Println(err.Error())
+				return jsonHelper.ApiError{
+					Err:    err.Error(),
+					Status: 500,
+				}
+			}
 			err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
 			if err != nil {
 				return jsonHelper.ApiError{
@@ -151,7 +172,9 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 		})
 
 		if err != nil {
+			fmt.Println("chmonya tyt")
 			return jsonHelper.ApiError{
+
 				Err:    err.Error(),
 				Status: 500,
 			}
@@ -182,6 +205,8 @@ func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
 	if err:=c.Bind(&body);err!=nil{
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
+
+	fmt.Println(body)
 
 	sess,err := sc.paymentService.CreateCheckoutSession(body.ProductList, user.CustomerID)
 	if err != nil {
@@ -310,7 +335,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 				Status: 500,
 			}
 		}
-		pc.ticketRepo.UpdatePaymentID(ticketID, pmID)
+		pc.ticketRepo.UpdatePaymentID(c,ticketID, pmID)
 		err = pc.productRepo.DecreaseProductAmount(c, product.ID, body.Amount)
 		if err != nil {
 			return jsonHelper.ApiError{
