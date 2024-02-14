@@ -115,7 +115,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 			productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, stripeProductID)
 			if err != nil {
 				return jsonHelper.ApiError{
-					Err:    "Internal server error",
+					Err:    "Internal server error: " + err.Error() ,
 					Status: 500,
 				}
 			}
