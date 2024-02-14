@@ -112,7 +112,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 
 		err = sc.ticketRepo.WithTransaction(c, func(c context.Context) error {
 			stripeProductID := sess.LineItems.Data[0].ID
-			productTicket,err := sc.productTicketRepo.GetByID(c, uuid.MustParse(stripeProductID))
+			productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, stripeProductID)
 			if err != nil {
 				return jsonHelper.ApiError{
 					Err:    "Internal server error",
