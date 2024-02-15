@@ -18,6 +18,7 @@ import (
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -41,12 +42,21 @@ type paymentService interface {
 	CreateCheckoutSession(productList []payment.ProductDto, customerID string) (*stripe.CheckoutSession, error)
 }
 
-func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr repository.TicketRepo, pr repository.ProductRepo, ptr repository.ProductTicketRepo) {	paymentGroup := r.Group("/payment")
-	pc := paymentController{userRepo: ur, paymentService: ps, ticketRepo: tr, productRepo: pr, productTicketRepo: ptr}
+type PaymentRouterOptions struct {
+	UserRepository userRepository
+	Ps paymentService
+	Tr repository.TicketRepo
+	Pr repository.ProductRepo
+	Ptr repository.ProductTicketRepo
+
+}
+
+func SetupPaymentRoutes(r *gin.Engine, options *PaymentRouterOptions) {	paymentGroup := r.Group("/payment")
+	pc := paymentController{userRepo: options.UserRepository, paymentService: options.Ps, ticketRepo: options.Tr, productRepo: options.Pr, productTicketRepo: options.Ptr}
 
 	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
 
-	paymentGroup.Use(auth.AuthMiddleware(ur))
+	paymentGroup.Use(auth.AuthMiddleware(options.UserRepository))
 	paymentGroup.POST("/method/setDefault", jsonHelper.MakeHttpHandler(pc.setDefaultPaymentMethod))
 	paymentGroup.GET("/paymentMethod/getAll", jsonHelper.MakeHttpHandler(pc.paymentMethodsHandler))
 	paymentGroup.GET("/paymentMethod/getDefault", jsonHelper.MakeHttpHandler(pc.getDefaultPaymentMethod))
@@ -55,6 +65,49 @@ func SetupPaymentRoutes(r *gin.Engine, ur userRepository, ps paymentService, tr 
 	//paymentGroup.POST("/buy/amount", jsonHelper.MakeHttpHandler(pc.buyAmount))
 	paymentGroup.POST("/setupIntent/create",jsonHelper.MakeHttpHandler(pc.createSetupIntent))
 	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createCheckoutSession))
+}
+
+func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup, errorCh chan error, dto *payment.ProductDto, user *models.User, sess *stripe.CheckoutSession) {
+	defer wg.Done()
+	expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
+	if err != nil {
+		errorCh <- err
+		return
+	}
+
+	productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, dto.ProductStripeID)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	ticketID, _ := uuid.NewRandom()
+	ticket := models.Ticket{
+		CreatedAt: int(time.Now().Unix()),
+		ExpiresAt: int(time.Now().Add(time.Hour * 24 * time.Duration(expirationTerm)).Unix()),
+		ID: ticketID,
+		UserId: user.ID,
+		Status: models.NOT_ACTIVATED,
+		Quantity: dto.Amount,
+		ProductTicketID: productTicket.ProductID,
+	}
+	ticket.SetSecret("Huy")
+
+	err = sc.ticketRepo.Create(c,ticket)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	err = sc.ticketRepo.UpdatePaymentID(c,ticketID, sess.PaymentIntent.ID)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	return
 }
 
 func (sc *paymentController) webhookHandler(c *gin.Context) error {
@@ -90,14 +143,6 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 		sess, err := session.Get(event.Data.Object["id"].(string), &stripe.CheckoutSessionParams{
 			Expand: []*string{&param},
 		})
-		fmt.Println(*sess)
-		fmt.Println(*sess.LineItems)
-		fmt.Println(*sess.LineItems.Data[0])
-
-		for _, pisiun := range sess.LineItems.Data {
-			fmt.Println(pisiun)
-			fmt.Println(pisiun.Quantity)
-		}
 
 		user,err:=sc.userRepo.GetByCustomerID(checkoutSession.Customer.ID)
 		if err != nil {
@@ -106,68 +151,29 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				Status: 500,
 			}
 		}
-		expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
-		if err != nil {
-			return jsonHelper.ApiError{
-				Err:    "Internal server error",
-				Status: 500,
-			}
-		}
-
-
-		if err != nil {
-			return jsonHelper.ApiError{
-				Err:    err.Error(),
-				Status: 500,
-			}
-		}
 
 		err = sc.ticketRepo.WithTransaction(c, func(c context.Context) error {
-			stripeProductID := sess.LineItems.Data[0].Price.Product.ID
-			productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, stripeProductID)
-			if err != nil {
-				fmt.Println("failed to get by some huynia")
-				return jsonHelper.ApiError{
-					Err:    "Internal server error: " + err.Error() ,
-					Status: 500,
-				}
-			}
-			ticketID, _ := uuid.NewRandom()
-			ticket := models.Ticket{
-				CreatedAt: int(time.Now().Unix()),
-				ExpiresAt: int(time.Now().Add(time.Hour * 24 * time.Duration(expirationTerm)).Unix()),
-				ID: ticketID,
-				UserId: user.ID,
-				Status: models.NOT_ACTIVATED,
-				Amount: productTicket.Amount,
-			}
-			ticket.SetSecret("Huy")
+			var productDtoList []*payment.ProductDto
+			wg := sync.WaitGroup{}
 
-			err = sc.ticketRepo.Create(c,ticket)
-			if err != nil {
-				fmt.Println("huynia")
-				fmt.Println(err.Error())
-				return jsonHelper.ApiError{
-					Err:    err.Error(),
-					Status: 500,
+			errorCh := make(chan error, 1)
+
+			for _, stripeProduct := range sess.LineItems.Data {
+				var dto = payment.ProductDto{
+					ProductStripeID: stripeProduct.Price.Product.ID,
+					Amount:          int(stripeProduct.Quantity),
+				}
+				productDtoList = append(productDtoList, &dto)
+				wg.Add(1)
+				go sc.processTicket(c, &wg,errorCh, &dto, &user, sess)
+			}
+			select {
+			case err = <-errorCh:
+				if err != nil {
+					return err
 				}
 			}
-			err = sc.ticketRepo.UpdatePaymentID(c,ticketID, checkoutSession.PaymentIntent.ID)
-			if err != nil {
-				fmt.Println("error updating payment id")
-				fmt.Println(err.Error())
-				return jsonHelper.ApiError{
-					Err:    err.Error(),
-					Status: 500,
-				}
-			}
-			err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
-			if err != nil {
-				return jsonHelper.ApiError{
-					Err:    err.Error(),
-					Status: 500,
-				}
-			}
+			wg.Wait()
 			return nil
 		})
 
@@ -308,6 +314,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 				Status: 500,
 			}
 		}
+
 		ticketID, _ := uuid.NewRandom()
 		ticket := models.Ticket{
 			CreatedAt: int(time.Now().Unix()),

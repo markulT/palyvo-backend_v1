@@ -24,6 +24,8 @@ func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userReposit
 	productTicketGroup.Use(auth.AuthMiddleware(ur))
 
 	productTicketGroup.GET("/all", jsonHelper.MakeHttpHandler(ptc.getAllProductTickets))
+	productTicketGroup.GET("", jsonHelper.MakeHttpHandler(ptc.getByID))
+	productTicketGroup.GET("/params", jsonHelper.MakeHttpHandler(ptc.getByOperator))
 
 	productTicketGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 
@@ -35,6 +37,46 @@ func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userReposit
 type UpdateProductTicketRequest struct {
 	CreateProductTicketRequest
 	ID string `json:"id"`
+}
+
+func (ptc *productTicketController) getByOperator(c *gin.Context) error {
+
+	var err error
+	operator := c.Query("operator")
+	ptList, err := ptc.productTicketRepo.GetByOperator(c, operator)
+
+	if err !=nil {
+		return jsonHelper.ApiError{
+			Err:    "Error getting product ticket by operator",
+			Status: 500,
+		}
+	}
+	c.JSON(200, gin.H{"productTickets":ptList})
+	return nil
+}
+
+func (ptc *productTicketController) getByID(c *gin.Context) error {
+
+	var err error
+	id := c.Query("id")
+	ptID, err := uuid.Parse(id)
+	if err !=nil {
+		return jsonHelper.ApiError{
+			Err:    "Invalid id type",
+			Status: 400,
+		}
+	}
+	pt, err := ptc.productTicketRepo.GetByID(c, ptID)
+
+	if err!= nil {
+		return jsonHelper.ApiError{
+			Err:    "Error getting product ticket by id: " + err.Error(),
+			Status: 500,
+		}
+	}
+
+	c.JSON(200, gin.H{"productTicket":pt})
+	return nil
 }
 
 func (ptc *productTicketController) updateProductTicket(c *gin.Context) error {

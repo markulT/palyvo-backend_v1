@@ -12,6 +12,7 @@ import (
 type ProductTicketRepo interface {
 	GetAllProductTickets(c context.Context) ([]models.ProductTicket, error)
 	GetByID(c context.Context,id uuid.UUID) (models.ProductTicket, error)
+	GetByOperator(c context.Context, op string) ([]models.ProductTicket, error)
 	SaveProductTicket(c context.Context,ticket *models.ProductTicket) error
 	UpdateStripeProductID(c context.Context,prID uuid.UUID, stripeProductID string) (models.ProductTicket,error)
 	DeleteProductTicket(c context.Context,id uuid.UUID) error
@@ -24,6 +25,24 @@ func NewProductTicketRepo() ProductTicketRepo {
 }
 
 type defaultProductTicketRepo struct {}
+
+func (d *defaultProductTicketRepo) GetByOperator(c context.Context, op string) ([]models.ProductTicket, error) {
+	var productTickets []models.ProductTicket
+	var err error
+	productTicketCollection := tools.DB.Collection("productTickets")
+	cursor, err := productTicketCollection.Find(c, bson.M{"operator":op})
+	if cursor.Err() !=nil {
+		return nil,cursor.Err()
+	}
+	for cursor.Next(c) {
+		var productTicket models.ProductTicket
+		if err=cursor.Decode(&productTicket);err!=nil {
+			return nil, err
+		}
+		productTickets = append(productTickets, productTicket)
+	}
+	return productTickets, nil
+}
 
 func (d *defaultProductTicketRepo) GetAllProductTickets(c context.Context) ([]models.ProductTicket, error) {
 	var productTickets []models.ProductTicket
