@@ -50,10 +50,17 @@ func main() {
 	//
 	//r.Use(cors.New(config))
 
+	paymentRoutesOptions := controllers.PaymentRouterOptions{
+		UserRepository: userRepo,
+		Ps:             stripePaymentService,
+		Tr:             ticketRepo,
+		Pr:             consistentProductRepo,
+		Ptr:            productTicketRepo,
+	}
 
 	controllers.SetupAuthRoutes(r, userRepo, stripePaymentService)
 	controllers.SetupOperatorRoutes(r, userRepo, adminRepo, ticketRepo)
-	controllers.SetupPaymentRoutes(r, userRepo,stripePaymentService, ticketRepo, consistentProductRepo, productTicketRepo)
+	controllers.SetupPaymentRoutes(r, &paymentRoutesOptions)
 	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
 	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo, stripePaymentService)
 	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
