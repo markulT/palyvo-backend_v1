@@ -12,7 +12,13 @@ func NewConsistentProductRepo() ProductRepo {
 	return &consistentProductRepo{}
 }
 
-type consistentProductRepo struct {}
+type consistentProductRepo struct {
+	productTicketRepo ProductTicketRepo
+}
+
+func (cpr *consistentProductRepo) SetProductTicketRepo(repo ProductTicketRepo) {
+	cpr.productTicketRepo = repo
+}
 
 func (cpr *consistentProductRepo) UpdateProductStripeID(c context.Context, pID uuid.UUID, newStripeID string) error {
 	var err error
@@ -145,11 +151,24 @@ func (cpr *consistentProductRepo) UpdateProductAmount(c context.Context, pid uui
 
 func (cpr *consistentProductRepo) DeleteProduct(c context.Context, pid uuid.UUID) error {
 	var err error
-	stmt, err := tools.RelationalDB.Prepare("delete from products where id = $1")
+	tx, err := tools.RelationalDB.BeginTx(c, &sql.TxOptions{Isolation: sql.LevelSerializable})
+
+	stmt, err := tx.Prepare("delete from products where id = $1")
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 	err = stmt.QueryRow(pid.String()).Err()
+	if err !=nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = cpr.productTicketRepo.DeleteManyByProductID(c, pid)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 	return err
 }
 

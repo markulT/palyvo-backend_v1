@@ -20,4 +20,6 @@ type ProductTicket struct {
 	Price int `json:"price" bson:"price"`
 	Currency string `json:"currency" bson:"currency"`
 	StripeID string `bson:"stripeProductId" json:"stripeProductId"`
+	Seller string `json:"seller" bson:"seller"`
+	FuelType string `json:"fuelType" bson:"fuelType"`
 }

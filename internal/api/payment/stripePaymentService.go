@@ -28,6 +28,7 @@ type PaymentService interface {
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(p *models.ProductTicket) (*stripe.Product,error)
 	CreateCheckoutSession(productList []ProductDto, customerID string) (*stripe.CheckoutSession, error)
+	DeleteProductByID(productID string) error
 }
 
 type ProductDto struct {
@@ -41,6 +42,10 @@ func NewStripePaymentService() PaymentService {
 
 type stripePaymentService struct {
 
+}
+
+func (s *stripePaymentService) DeleteProductByID(productID string) error {
+	return nil
 }
 
 func (s *stripePaymentService) getPriceIDByProductID(productID string) (string, error) {

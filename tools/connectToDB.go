@@ -60,6 +60,29 @@ func ConnectToPostgres() {
 
 	RelationalDB = db
 }
+
+
+
 func InitSQL() {
 
+}
+
+type TransactionFn func(c context.Context) (interface{},error)
+
+func WithTransaction(c context.Context, fn TransactionFn) (interface{},error) {
+	sess, _ := DB.Client().StartSession()
+	defer sess.EndSession(c)
+
+	res, err := sess.WithTransaction(c, func(sc mongo.SessionContext) (interface{}, error) {
+		res,err := fn(sc)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
+	})
+	if err != nil {
+		return nil,err
+	}
+
+	return res,nil
 }

@@ -29,8 +29,32 @@ func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userReposit
 	productGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 	productGroup.POST("/", jsonHelper.MakeHttpHandler(pc.createProduct))
 	productGroup.POST("/updateAmount", jsonHelper.MakeHttpHandler(pc.updateProductAmount))
+	productGroup.DELETE("/delete", jsonHelper.MakeHttpHandler(pc.updateProductAmount))
+}
 
+func (pc *productController) deleteProduct(c *gin.Context) error {
+	var err error
+	productIDField := c.Query("productId")
 
+	productID, err := uuid.Parse(productIDField)
+	if err !=nil {
+		return jsonHelper.ApiError{
+			Err:    "Error parsing id",
+			Status: 500,
+		}
+	}
+
+	err = pc.productRepo.DeleteProduct(c, productID)
+	if err !=nil {
+		return jsonHelper.ApiError{
+			Err:    "Error deleting product: " + err.Error(),
+			Status: 500,
+		}
+	}
+
+	c.JSON(200, gin.H{})
+
+	return nil
 }
 
 type CreateStripeProductRequest struct {

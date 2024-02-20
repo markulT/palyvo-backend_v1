@@ -20,13 +20,22 @@ type ProductRepo interface {
 	GetBySeller(c context.Context, seller string) ([]models.Product, error)
 	GetBySellerAndFuelType(c context.Context, seller string, fuelType string) ([]models.Product, error)
 	UpdateProductStripeID(c context.Context, pID uuid.UUID, newStripeID string) error
+
+	SetProductTicketRepo(repo ProductTicketRepo)
+
 }
 
 func NewProductRepo() ProductRepo {
 	return &defaultProductRepo{}
 }
 
-type defaultProductRepo struct {}
+type defaultProductRepo struct {
+	productTicketRepo ProductTicketRepo
+}
+
+func (pr *defaultProductRepo) SetProductTicketRepo(repo ProductTicketRepo) {
+	pr.productTicketRepo = repo
+}
 
 func (pr *defaultProductRepo) UpdateProductStripeID(c context.Context, pID uuid.UUID, newStripeID string) error{
 	return nil

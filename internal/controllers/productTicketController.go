@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
 	"palyvoua/internal/repository"
+	"palyvoua/tools"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
@@ -25,13 +26,14 @@ func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userReposit
 
 	productTicketGroup.GET("/all", jsonHelper.MakeHttpHandler(ptc.getAllProductTickets))
 	productTicketGroup.GET("", jsonHelper.MakeHttpHandler(ptc.getByID))
-	productTicketGroup.GET("/params", jsonHelper.MakeHttpHandler(ptc.getByOperator))
+	productTicketGroup.GET("/params", jsonHelper.MakeHttpHandler(ptc.getByParams))
 
 	productTicketGroup.Use(auth.RoleMiddleware(3, ur, adminRepo))
 
 	productTicketGroup.POST("/create", jsonHelper.MakeHttpHandler(ptc.createProductTicket))
 	productTicketGroup.DELETE("", jsonHelper.MakeHttpHandler(ptc.deleteProductTicket))
 	productTicketGroup.PUT("", jsonHelper.MakeHttpHandler(ptc.updateProductTicket))
+
 }
 
 type UpdateProductTicketRequest struct {
@@ -39,11 +41,23 @@ type UpdateProductTicketRequest struct {
 	ID string `json:"id"`
 }
 
-func (ptc *productTicketController) getByOperator(c *gin.Context) error {
+func (ptc *productTicketController) getByParams(c *gin.Context) error {
 
 	var err error
 	operator := c.Query("operator")
-	ptList, err := ptc.productTicketRepo.GetByOperator(c, operator)
+	fuelType := c.Query("fuelType")
+
+	params := repository.FindTicketParams{}
+
+	if operator != "" {
+		params.Operator = &operator
+	}
+
+	if fuelType != "" {
+		params.FuelType = &fuelType
+	}
+
+	ptList, err := ptc.productTicketRepo.FindByParams(c, &params)
 
 	if err !=nil {
 		return jsonHelper.ApiError{
@@ -51,6 +65,9 @@ func (ptc *productTicketController) getByOperator(c *gin.Context) error {
 			Status: 500,
 		}
 	}
+
+
+
 	c.JSON(200, gin.H{"productTickets":ptList})
 	return nil
 }
@@ -121,6 +138,8 @@ type CreateProductTicketRequest struct {
 	Title string `json:"title"`
 	Price int `json:"price"`
 	Currency string `json:"currency"`
+	Seller string `bson:"seller" json:"seller"`
+	FuelType string `json:"fuelType" bson:"fuelType"`
 }
 
 func (ptc *productTicketController) deleteProductTicket(c *gin.Context) error {
@@ -133,14 +152,14 @@ func (ptc *productTicketController) deleteProductTicket(c *gin.Context) error {
 			Status: 400,
 		}
 	}
-
-	err = ptc.productTicketRepo.DeleteProductTicket(context.Background(),productTicketID)
-	if err != nil {
-		return jsonHelper.ApiError{
-			Err:    "Error parsing id",
-			Status: 400,
+	_,err = tools.WithTransaction(c, func(ctx context.Context) (interface{}, error) {
+		err = ptc.productTicketRepo.DeleteProductTicket(c,productTicketID)
+		if err != nil {
+			return nil,err
 		}
-	}
+		return nil, nil
+	})
+
 	c.JSON(200,gin.H{})
 	return nil
 }
@@ -167,6 +186,8 @@ func (ptc *productTicketController) createProductTicket(c *gin.Context) error {
 		Price:     body.Price,
 		Currency:  body.Currency,
 		StripeID:  "",
+		Seller: body.Seller,
+		FuelType: body.FuelType,
 	}
 
 	err = ptc.productTicketRepo.SaveProductTicket(context.Background(),&productTicket)
