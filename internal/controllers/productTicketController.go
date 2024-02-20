@@ -153,10 +153,16 @@ func (ptc *productTicketController) deleteProductTicket(c *gin.Context) error {
 		}
 	}
 	_,err = tools.WithTransaction(c, func(ctx context.Context) (interface{}, error) {
+
+		product, err := ptc.productTicketRepo.GetByID(c,productTicketID)
+
 		err = ptc.productTicketRepo.DeleteProductTicket(c,productTicketID)
 		if err != nil {
 			return nil,err
 		}
+
+		err = ptc.paymentService.DeleteProductByID(product.StripeID)
+
 		return nil, nil
 	})
 

@@ -45,6 +45,15 @@ type stripePaymentService struct {
 }
 
 func (s *stripePaymentService) DeleteProductByID(productID string) error {
+
+	var err error
+	params := stripe.ProductParams{}
+
+	_, err = product.Del(productID, &params)
+	if err !=nil {
+		return err
+	}
+
 	return nil
 }
 

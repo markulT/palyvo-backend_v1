@@ -40,6 +40,7 @@ type paymentService interface {
 	GetCustomerByID(cid string) (*stripe.Customer, error)
 	SaveProduct(product *models.ProductTicket) (*stripe.Product, error)
 	CreateCheckoutSession(productList []payment.ProductDto, customerID string) (*stripe.CheckoutSession, error)
+	DeleteProductByID(productID string) error
 }
 
 type PaymentRouterOptions struct {
