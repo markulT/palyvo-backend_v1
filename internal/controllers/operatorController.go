@@ -24,7 +24,7 @@ func SetupOperatorRoutes(r *gin.Engine , authRepo userRepository, adminRepo admi
 
 	operatorGroup.Use(auth.AuthMiddleware(oc.authRepo))
 	operatorGroup.Use(auth.RoleMiddleware(2, oc.authRepo, oc.adminRepo))
-	operatorGroup.POST("/submitTicket")
+	operatorGroup.POST("/submitTicket", jsonHelper.MakeHttpHandler(oc.submitTicket))
 
 }
 

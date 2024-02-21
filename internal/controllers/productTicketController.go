@@ -48,16 +48,14 @@ func (ptc *productTicketController) getByParams(c *gin.Context) error {
 	fuelType := c.Query("fuelType")
 
 	params := repository.FindTicketParams{}
-
 	if operator != "" {
 		params.Operator = &operator
 	}
-
 	if fuelType != "" {
 		params.FuelType = &fuelType
 	}
 
-	ptList, err := ptc.productTicketRepo.FindByParams(c, &params)
+	ptList, err := ptc.productTicketRepo.FindByParams(context.Background(), &params)
 
 	if err !=nil {
 		return jsonHelper.ApiError{

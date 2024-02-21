@@ -31,7 +31,10 @@ type ProductTicketRepo interface {
 }
 
 func NewProductTicketRepo() ProductTicketRepo {
-	return &defaultProductTicketRepo{}
+
+	repo := defaultProductTicketRepo{}
+	repo.localCollection =tools.DB.Collection("productTickets")
+	return &repo
 }
 
 type defaultProductTicketRepo struct {
@@ -50,8 +53,7 @@ func (d *defaultProductTicketRepo) FindByParams(c context.Context, params *FindT
 	if params.FuelType != nil {
 		filter["fuelType"] = *params.FuelType
 	}
-
-	curs, err := d.localCollection.Find(c,filter)
+	curs, err := d.localCollection.Find(c, filter)
 	if err !=nil {
 		return nil, err
 	}
