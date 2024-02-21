@@ -67,6 +67,8 @@ func (ac *authController) refresh(c *gin.Context) error {
 	}
 	tokens := auth.GenerateTokens(map[string]interface{}{
 		"email": userFromDb.Email,
+		"_id":userFromDb.ID.String(),
+		"roleId":userFromDb.Role.String(),
 	}, c)
 	c.JSON(200, gin.H{
 		"accessToken":  tokens.AccessToken,
@@ -95,9 +97,7 @@ func (ac *authController) login(c *gin.Context) error {
 			Status: 404,
 		}
 	}
-	fmt.Println(userFromDB)
-	fmt.Println("password")
-	fmt.Println(userFromDB.Password)
+
 	if err := bcrypt.CompareHashAndPassword([]byte(userFromDB.Password), []byte(body.Password)); err != nil {
 		fmt.Println(err.Error())
 		return jsonHelper.ApiError{
@@ -106,7 +106,9 @@ func (ac *authController) login(c *gin.Context) error {
 		}
 	}
 	tokens := auth.GenerateTokens(map[string]interface{}{
-		"email":    userFromDB.Email,
+		"email": userFromDB.Email,
+		"_id":userFromDB.ID.String(),
+		"roleId":userFromDB.Role.String(),
 	}, c)
 
 	c.JSON(200, gin.H{
@@ -172,6 +174,8 @@ func (ac *authController) register(c *gin.Context) error {
 	}
 	tokens := auth.GenerateTokens(map[string]interface{}{
 		"email": newUser.Email,
+		"_id":newUser.ID.String(),
+		"roleId":newUser.Role.String(),
 	}, c)
 
 	if err := ac.AuthRepo.SaveUser(&newUser); err != nil {
