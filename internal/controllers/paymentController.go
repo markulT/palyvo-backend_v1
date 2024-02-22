@@ -72,14 +72,12 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 	defer wg.Done()
 	expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
 	if err != nil {
-		fmt.Println(err)
 		errorCh <- err
 		return
 	}
 
 	productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, dto.ProductStripeID)
 	if err != nil {
-		fmt.Println(err)
 		errorCh <- err
 		return
 	}
@@ -91,30 +89,28 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 		UserId: user.ID,
 		Status: models.NOT_ACTIVATED,
 		Quantity: dto.Amount,
-		ProductTicketID: productTicket.ProductID,
+		ProductTicketID: productTicket.ID,
 	}
 	ticket.SetSecret("Huy")
 
 	err = sc.ticketRepo.Create(c,ticket)
 	if err != nil {
-		fmt.Println(err)
 		errorCh <- err
 		return
 	}
-	fmt.Println("updating till here")
+
 	err = sc.ticketRepo.UpdatePaymentID(c,ticketID, sess.PaymentIntent.ID)
 	if err != nil {
-		fmt.Println(err)
 		errorCh <- err
 		return
 	}
-	fmt.Println("nigger")
+
 	err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
 	if err != nil {
-		fmt.Println(err)
 		errorCh <- err
 		return
 	}
+
 	return
 }
 
@@ -164,7 +160,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 			var productDtoList []*payment.ProductDto
 			wg := sync.WaitGroup{}
 
-			errorCh := make(chan error, 1)
+			errorCh := make(chan error, len(sess.LineItems.Data))
 
 			for _, stripeProduct := range sess.LineItems.Data {
 				var dto = payment.ProductDto{
@@ -175,22 +171,19 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				wg.Add(1)
 				go sc.processTicket(c, &wg,errorCh, &dto, &user, sess)
 			}
-			fmt.Println("Before select")
-			select {
-			case err = <-errorCh:
+
+			wg.Wait()
+			close(errorCh)
+			for err := range errorCh {
 				if err != nil {
 					return err
 				}
 			}
-			fmt.Println("********")
-			fmt.Println("MAIN ROUTINE IS NOT STOPPED")
-			fmt.Println("********")
-			wg.Wait()
+
 			return nil
 		})
 
 		if err != nil {
-			fmt.Println("chmonya tyt")
 			return jsonHelper.ApiError{
 
 				Err:    err.Error(),
@@ -209,13 +202,14 @@ type CreateCheckoutSessionRequest struct {
 
 func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
 
-	userField, exists := c.Get("user")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
 		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, ok := userField.(models.User)
-	if !ok {
 
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
 		return jsonHelper.DefaultHttpErrors["400"]
 	}
 
@@ -224,17 +218,14 @@ func (sc *paymentController) createCheckoutSession(c *gin.Context) error {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
 
-	fmt.Println(body)
 
-	sess,err := sc.paymentService.CreateCheckoutSession(body.ProductList, user.CustomerID)
+	sess,err := sc.paymentService.CreateCheckoutSession(body.ProductList, authBody.GetUser().CustomerID)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Internal server error",
 			Status: 500,
 		}
 	}
-	fmt.Println(*sess)
-	fmt.Println(sess.PaymentIntent)
 	c.JSON(200, gin.H{"sessionId":sess.ID})
 	return nil
 }

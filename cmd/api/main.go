@@ -56,6 +56,7 @@ func main() {
 		Tr:             ticketRepo,
 		Pr:             consistentProductRepo,
 		Ptr:            productTicketRepo,
+		AdminRepo: adminRepo,
 	}
 
 	controllers.SetupAuthRoutes(r, userRepo, stripePaymentService)

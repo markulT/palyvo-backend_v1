@@ -63,9 +63,8 @@ func AuthMiddleware(userRepo repository.UserRepo, roleRepo roleRepo) gin.Handler
 			c.Abort()
 			return
 		}
-
+		fmt.Println(user.Role)
 		role, err := roleRepo.GetRoleByID(user.Role)
-
 		if err != nil {
 
 			c.JSON(403, gin.H{"error": "You have no authority for this (FORBIDDEN)"})
@@ -76,6 +75,7 @@ func AuthMiddleware(userRepo repository.UserRepo, roleRepo roleRepo) gin.Handler
 		authBody := AuthBody{}
 		err = authBody.setUser(&user)
 		if err != nil {
+
 			c.JSON(400, gin.H{"error": "Error authorising user"})
 			c.Abort()
 			return
@@ -102,21 +102,31 @@ type roleRepo interface {
 
 func RoleMiddleware(requiredAuthorityLevel int, userRepo repository.UserRepo, roleRepo roleRepo) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userEmail, exists := c.Get("userEmail")
+		authBodyField, exists := c.Get("authBody")
 
 		if !exists {
 			c.Set("authorized", false)
 			c.Set("authorityLevel", -1)
-			c.JSON(403, gin.H{"error": "Error authorizing user"})
+			c.JSON(403, gin.H{"error": "Error authorizing user: " + "does not exist"})
 			c.Abort()
 			return
 		}
 
-		user, err := userRepo.GetUserByEmail(context.Background(), userEmail.(string))
+		authBody, ok := authBodyField.(AuthBody)
+
+		if !ok {
+			c.Set("authorized", false)
+			c.Set("authorityLevel", -1)
+			c.JSON(403, gin.H{"error": "Error authorizing user: " + "failed to cast"})
+			c.Abort()
+			return
+		}
+
+		user, err := userRepo.GetUserByEmail(context.Background(), authBody.user.Email)
 		if err != nil {
 			c.Set("authorized", false)
 			c.Set("authorityLevel", -1)
-			c.JSON(403, gin.H{"error": "Error authorizing user"})
+			c.JSON(403, gin.H{"error": "Error authorizing user: " + err.Error()})
 			c.Abort()
 			return
 		}
