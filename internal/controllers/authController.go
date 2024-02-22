@@ -12,18 +12,11 @@ import (
 )
 
 type authController struct {
-	AuthRepo userRepository
+	AuthRepo repository.UserRepo
 	paymentService paymentService
 }
 
-type userRepository interface {
-	SaveUser(*models.User) error
-	GetUserByEmail(email string) (models.User, error)
-	UpdateCustomerIDByEmail(email string, cid string) error
-	GetByCustomerID(cID string) (models.User,error)
-}
-
-func SetupAuthRoutes(r *gin.Engine, authRepo userRepository, ps paymentService) {
+func SetupAuthRoutes(r *gin.Engine, authRepo repository.UserRepo, ps paymentService) {
 	ac := authController{AuthRepo: authRepo, paymentService:ps}
 
 	authGroup := r.Group("/auth")

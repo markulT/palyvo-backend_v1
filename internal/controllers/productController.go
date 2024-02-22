@@ -16,11 +16,11 @@ type productController struct {
 	paymentService paymentService
 }
 
-func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur userRepository, adminRepo adminRepo, ps paymentService) {
+func SetupProductRoutes(r *gin.Engine, pr repository.ProductRepo, ur repository.UserRepo, adminRepo adminRepo, ps paymentService) {
 	productGroup := r.Group("/product")
 	pc := productController{productRepo: pr, paymentService: ps}
 
-	productGroup.Use(auth.AuthMiddleware(ur))
+	productGroup.Use(auth.AuthMiddleware(ur, adminRepo))
 	//productGroup.POST("/buy", jsonHelper.MakeHttpHandler(pc.buyProduct))
 	productGroup.GET("/all", jsonHelper.MakeHttpHandler(pc.getAllProducts))
 	productGroup.GET("/:id", jsonHelper.MakeHttpHandler(pc.getProductByID))

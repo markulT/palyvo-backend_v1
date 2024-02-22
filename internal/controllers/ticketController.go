@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
+	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 	"strconv"
@@ -12,8 +13,7 @@ import (
 
 type ticketController struct {
 	ticketRepo ticketRepo
-	userRepo userRepository
-	authRepo userRepository
+	userRepo repository.UserRepo
 	adminRepo adminRepo
 }
 
@@ -33,13 +33,13 @@ type ticketRepo interface {
 //	}
 //}
 
-func SetupTicketRoutes(r *gin.Engine, userRepo userRepository, tr ticketRepo, adminRepo adminRepo) {
+func SetupTicketRoutes(r *gin.Engine, userRepo repository.UserRepo, tr ticketRepo, adminRepo adminRepo) {
 	ticketGroup := r.Group("/ticket")
 
-	tc := ticketController{authRepo: userRepo, userRepo: userRepo, ticketRepo: tr, adminRepo: adminRepo}
+	tc := ticketController{userRepo: userRepo, ticketRepo: tr, adminRepo: adminRepo}
 
-	ticketGroup.Use(auth.AuthMiddleware(tc.authRepo))
-	ticketGroup.Use(auth.RoleMiddleware(0, tc.authRepo, tc.adminRepo))
+	ticketGroup.Use(auth.AuthMiddleware(userRepo, adminRepo))
+	ticketGroup.Use(auth.RoleMiddleware(0, userRepo, tc.adminRepo))
 	ticketGroup.GET("/", jsonHelper.MakeHttpHandler(tc.getAll))
 	ticketGroup.GET("/:id", jsonHelper.MakeHttpHandler(tc.getByID))
 }
@@ -82,7 +82,7 @@ func (tc *ticketController) getByID(c *gin.Context) error {
 	authorityLevel, _ := strconv.Atoi(authorityLevelstr.(string))
 
 
-	user , err := tc.userRepo.GetUserByEmail(userEmail.(string))
+	user , err := tc.userRepo.GetUserByEmail(c,userEmail.(string))
 
 	ticketToReceive := c.Param("id")
 

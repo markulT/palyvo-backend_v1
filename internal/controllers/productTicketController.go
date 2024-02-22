@@ -17,12 +17,12 @@ type productTicketController struct {
 	productTicketRepo repository.ProductTicketRepo
 }
 
-func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur userRepository, productTicketRepo repository.ProductTicketRepo, ps paymentService) {
+func SetupProductTicketRoutes(r *gin.Engine, adminRepo adminRepo, ur repository.UserRepo, productTicketRepo repository.ProductTicketRepo, ps paymentService) {
 	productTicketGroup := r.Group("/productTicket")
 
 	ptc := productTicketController{productTicketRepo: productTicketRepo, paymentService: ps}
 
-	productTicketGroup.Use(auth.AuthMiddleware(ur))
+	productTicketGroup.Use(auth.AuthMiddleware(ur, adminRepo))
 
 	productTicketGroup.GET("/all", jsonHelper.MakeHttpHandler(ptc.getAllProductTickets))
 	productTicketGroup.GET("", jsonHelper.MakeHttpHandler(ptc.getByID))

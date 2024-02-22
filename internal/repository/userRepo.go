@@ -10,7 +10,7 @@ import (
 
 type UserRepo interface {
 	SaveUser(*models.User) error
-	GetUserByEmail(email string) (models.User, error)
+	GetUserByEmail(ctx context.Context,email string) (models.User, error)
 	UpdateCustomerIDByEmail(email string, cid string) error
 	GetByCustomerID(cID string) (models.User,error)
 }
@@ -45,7 +45,7 @@ func (d *defaultUserRepo) SaveUser(user *models.User) error {
 	return err
 }
 
-func (d *defaultUserRepo) GetUserByEmail(email string) (models.User, error) {
+func (d *defaultUserRepo) GetUserByEmail(ctx context.Context,email string) (models.User, error) {
 	var user models.User
 	userCollection := tools.DB.Collection("users")
 	err := userCollection.FindOne(context.TODO(), bson.M{"email":email}).Decode(&user)

@@ -23,7 +23,7 @@ import (
 )
 
 type paymentController struct {
-	userRepo userRepository
+	userRepo repository.UserRepo
 	paymentService
 	ticketRepo repository.TicketRepo
 	productRepo repository.ProductRepo
@@ -44,12 +44,12 @@ type paymentService interface {
 }
 
 type PaymentRouterOptions struct {
-	UserRepository userRepository
+	UserRepository repository.UserRepo
 	Ps paymentService
 	Tr repository.TicketRepo
 	Pr repository.ProductRepo
 	Ptr repository.ProductTicketRepo
-
+	AdminRepo repository.AdminRepo
 }
 
 func SetupPaymentRoutes(r *gin.Engine, options *PaymentRouterOptions) {	paymentGroup := r.Group("/payment")
@@ -57,7 +57,7 @@ func SetupPaymentRoutes(r *gin.Engine, options *PaymentRouterOptions) {	paymentG
 
 	paymentGroup.POST("/webhook", jsonHelper.MakeHttpHandler(pc.webhookHandler))
 
-	paymentGroup.Use(auth.AuthMiddleware(options.UserRepository))
+	paymentGroup.Use(auth.AuthMiddleware(options.UserRepository, options.AdminRepo))
 	paymentGroup.POST("/method/setDefault", jsonHelper.MakeHttpHandler(pc.setDefaultPaymentMethod))
 	paymentGroup.GET("/paymentMethod/getAll", jsonHelper.MakeHttpHandler(pc.paymentMethodsHandler))
 	paymentGroup.GET("/paymentMethod/getDefault", jsonHelper.MakeHttpHandler(pc.getDefaultPaymentMethod))
@@ -72,12 +72,14 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 	defer wg.Done()
 	expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
 	if err != nil {
+		fmt.Println(err)
 		errorCh <- err
 		return
 	}
 
 	productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, dto.ProductStripeID)
 	if err != nil {
+		fmt.Println(err)
 		errorCh <- err
 		return
 	}
@@ -95,16 +97,19 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 
 	err = sc.ticketRepo.Create(c,ticket)
 	if err != nil {
+		fmt.Println(err)
 		errorCh <- err
 		return
 	}
 	err = sc.ticketRepo.UpdatePaymentID(c,ticketID, sess.PaymentIntent.ID)
 	if err != nil {
+		fmt.Println(err)
 		errorCh <- err
 		return
 	}
 	err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
 	if err != nil {
+		fmt.Println(err)
 		errorCh <- err
 		return
 	}
@@ -173,7 +178,11 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				if err != nil {
 					return err
 				}
+
 			}
+			fmt.Println("********")
+			fmt.Println("MAIN ROUTINE IS NOT STOPPED")
+			fmt.Println("********")
 			wg.Wait()
 			return nil
 		})
@@ -242,7 +251,7 @@ func (sc *paymentController) createSetupIntent(c *gin.Context) error {
 			Status: 417,
 		}
 	}
-	user, err := sc.userRepo.GetUserByEmail(fmt.Sprintf("%s", userEmail))
+	user, err := sc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", userEmail))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -292,7 +301,7 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 		}
 	}
 
-	user, err := pc.userRepo.GetUserByEmail(userEmail.(string))
+	user, err := pc.userRepo.GetUserByEmail(c,userEmail.(string))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "No such user",
@@ -380,7 +389,7 @@ func (pc *paymentController) setDefaultPaymentMethod(c *gin.Context) error {
 			Status: 417,
 		}
 	}
-	user, err := pc.userRepo.GetUserByEmail(fmt.Sprintf("%s", authUserEmail))
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -400,7 +409,7 @@ func (pc *paymentController) paymentMethodsHandler(c *gin.Context) error {
 			Status: 404,
 		}
 	}
-	user, err := pc.userRepo.GetUserByEmail(fmt.Sprintf("%s", userEmail))
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", userEmail))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -434,7 +443,7 @@ func (pc *paymentController) getDefaultPaymentMethod(c *gin.Context) error {
 			Status: 417,
 		}
 	}
-	user, err := pc.userRepo.GetUserByEmail(fmt.Sprintf("%s", authUserEmail))
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -464,7 +473,7 @@ func (pc *paymentController) deletePaymentMethod(c *gin.Context) error {
 			Status: 417,
 		}
 	}
-	user, err := pc.userRepo.GetUserByEmail(fmt.Sprintf("%s", authUserEmail))
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),

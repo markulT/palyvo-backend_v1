@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
+	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
@@ -11,18 +12,18 @@ import (
 //type operatorControllerOptions func(*operatorController)
 
 type operatorController struct {
-	authRepo userRepository
+	authRepo repository.UserRepo
 	adminRepo adminRepo
 	ticketRepo ticketRepo
 }
 
-func SetupOperatorRoutes(r *gin.Engine , authRepo userRepository, adminRepo adminRepo, tr ticketRepo) {
+func SetupOperatorRoutes(r *gin.Engine , authRepo repository.UserRepo, adminRepo adminRepo, tr ticketRepo) {
 	operatorGroup := r.Group("/operator")
 
 	oc := operatorController{authRepo: authRepo, adminRepo: adminRepo, ticketRepo: tr}
 
 
-	operatorGroup.Use(auth.AuthMiddleware(oc.authRepo))
+	operatorGroup.Use(auth.AuthMiddleware(oc.authRepo, adminRepo))
 	operatorGroup.Use(auth.RoleMiddleware(2, oc.authRepo, oc.adminRepo))
 	operatorGroup.POST("/submitTicket", jsonHelper.MakeHttpHandler(oc.submitTicket))
 
