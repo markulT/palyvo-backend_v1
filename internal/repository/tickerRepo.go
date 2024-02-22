@@ -34,7 +34,10 @@ func (d *defaultTicketRepo) UpdatePaymentID(c context.Context,u uuid.UUID, s str
 	ticketCollection := tools.DB.Collection("tickets")
 	fmt.Println("updating")
 	_,err := ticketCollection.UpdateByID(c, u, bson.M{"$set":bson.M{"paymentId":s, "status":models.ACTIVATED}})
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {

@@ -101,12 +101,14 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 		errorCh <- err
 		return
 	}
+	fmt.Println("updating till here")
 	err = sc.ticketRepo.UpdatePaymentID(c,ticketID, sess.PaymentIntent.ID)
 	if err != nil {
 		fmt.Println(err)
 		errorCh <- err
 		return
 	}
+	fmt.Println("nigger")
 	err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
 	if err != nil {
 		fmt.Println(err)
@@ -173,6 +175,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				wg.Add(1)
 				go sc.processTicket(c, &wg,errorCh, &dto, &user, sess)
 			}
+			fmt.Println("Before select")
 			select {
 			case err = <-errorCh:
 				if err != nil {
