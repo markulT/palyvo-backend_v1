@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -12,7 +13,7 @@ func UserExists(email string) bool {
 	//var count int64
 	//utils.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
 	userRepo := repository.NewUserRepo()
-	user, _ := userRepo.GetUserByEmail(email)
+	user, _ := userRepo.GetUserByEmail(context.Background(),email)
 	fmt.Println(user)
 	isEmpty := user == models.User{}
 	if isEmpty {
