@@ -45,7 +45,7 @@ func (ac *authController) refresh(c *gin.Context) error {
 			Status: 400,
 		}
 	}
-	userFromDb, err = ac.AuthRepo.GetUserByEmail(email)
+	userFromDb, err = ac.AuthRepo.GetUserByEmail(c,email)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -83,7 +83,7 @@ func (ac *authController) login(c *gin.Context) error {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
 
-	userFromDB, err := ac.AuthRepo.GetUserByEmail(body.Email)
+	userFromDB, err := ac.AuthRepo.GetUserByEmail(c,body.Email)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),

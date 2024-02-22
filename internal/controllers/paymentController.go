@@ -178,7 +178,6 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 				if err != nil {
 					return err
 				}
-
 			}
 			fmt.Println("********")
 			fmt.Println("MAIN ROUTINE IS NOT STOPPED")
