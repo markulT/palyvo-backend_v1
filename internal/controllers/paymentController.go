@@ -68,7 +68,55 @@ func SetupPaymentRoutes(r *gin.Engine, options *PaymentRouterOptions) {	paymentG
 	paymentGroup.POST("/checkout/create",jsonHelper.MakeHttpHandler(pc.createCheckoutSession))
 }
 
-func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup, errorCh chan error, dto *payment.ProductDto, user *models.User, sess *stripe.CheckoutSession) {
+func (sc *paymentController) processProductID(c context.Context, wg *sync.WaitGroup, errorCh chan error, productID string, user *models.User, sess *stripe.CheckoutSession) {
+	defer wg.Done()
+
+	expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	fmt.Println(productID)
+	productTicket,err := sc.productTicketRepo.GetByStripeProductID(c, productID)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+	ticketID, _ := uuid.NewRandom()
+	ticket := models.Ticket{
+		CreatedAt: int(time.Now().Unix()),
+		ExpiresAt: int(time.Now().Add(time.Hour * 24 * time.Duration(expirationTerm)).Unix()),
+		ID: ticketID,
+		UserId: user.ID,
+		Status: models.NOT_ACTIVATED,
+		ProductTicketID: productTicket.ID,
+		Amount: productTicket.Amount,
+	}
+	ticket.SetSecret("Huy")
+
+	err = sc.ticketRepo.Create(c,ticket)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+
+	err = sc.ticketRepo.UpdatePaymentID(c,ticketID, sess.PaymentIntent.ID)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+
+	err = sc.productRepo.DecreaseProductAmount(c, productTicket.ProductID, productTicket.Amount)
+	if err != nil {
+		errorCh <- err
+		return
+	}
+
+	return
+
+}
+
+func (sc *paymentController) processProductDto(c context.Context, wg *sync.WaitGroup, errorCh chan error, dto *payment.ProductDto, user *models.User, sess *stripe.CheckoutSession) {
 	defer wg.Done()
 	expirationTerm, err := strconv.Atoi(os.Getenv("TICKET_EXPIRATION"))
 	if err != nil {
@@ -88,7 +136,6 @@ func (sc *paymentController) processTicket(c context.Context, wg *sync.WaitGroup
 		ID: ticketID,
 		UserId: user.ID,
 		Status: models.NOT_ACTIVATED,
-		Quantity: dto.Amount,
 		ProductTicketID: productTicket.ID,
 	}
 	ticket.SetSecret("Huy")
@@ -150,6 +197,7 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 
 		user,err:=sc.userRepo.GetByCustomerID(checkoutSession.Customer.ID)
 		if err != nil {
+			fmt.Println("error tyt")
 			return jsonHelper.ApiError{
 				Err:    err.Error(),
 				Status: 500,
@@ -160,6 +208,8 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 			var productDtoList []*payment.ProductDto
 			wg := sync.WaitGroup{}
 
+			var productIDList []string
+
 			errorCh := make(chan error, len(sess.LineItems.Data))
 
 			for _, stripeProduct := range sess.LineItems.Data {
@@ -167,15 +217,23 @@ func (sc *paymentController) webhookHandler(c *gin.Context) error {
 					ProductStripeID: stripeProduct.Price.Product.ID,
 					Amount:          int(stripeProduct.Quantity),
 				}
+
+				for i := 0;i < int(stripeProduct.Quantity); i++ {
+					productIDList = append(productIDList, stripeProduct.Price.Product.ID)
+				}
+
 				productDtoList = append(productDtoList, &dto)
+			}
+
+			for _, productID := range productIDList {
 				wg.Add(1)
-				go sc.processTicket(c, &wg,errorCh, &dto, &user, sess)
+				go sc.processProductID(c, &wg, errorCh, productID, &user, sess)
 			}
 
 			wg.Wait()
 			close(errorCh)
 			for err := range errorCh {
-				if err != nil {
+				if err != nil  {
 					return err
 				}
 			}
@@ -345,7 +403,13 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 				Status: 500,
 			}
 		}
-		pc.ticketRepo.UpdatePaymentID(c,ticketID, pmID)
+		err = pc.ticketRepo.UpdatePaymentID(c,ticketID, pmID)
+		if err != nil {
+			return jsonHelper.ApiError{
+				Err:    err.Error(),
+				Status: 500,
+			}
+		}
 		err = pc.productRepo.DecreaseProductAmount(c, product.ID, body.Amount)
 		if err != nil {
 			return jsonHelper.ApiError{

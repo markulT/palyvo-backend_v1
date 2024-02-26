@@ -18,7 +18,6 @@ type Ticket struct {
 	Amount int `json:"amount" bson:"amount"`
 	PaymentID string `json:"paymentId" bson:"paymentId"`
 	ProductTicketID uuid.UUID `bson:"productTicketId" json:"productTicketId"`
-	Quantity int `json:"quantity" bson:"quantity"`
 }
 
 func (t *Ticket) GetSecret() string {
