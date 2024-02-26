@@ -8,7 +8,6 @@ import (
 	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
-	"strconv"
 )
 
 type ticketController struct {
@@ -70,19 +69,16 @@ func (tc *ticketController) getAll(c *gin.Context) error {
 
 func (tc *ticketController) getByID(c *gin.Context) error {
 
-	userEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.DefaultHttpErrors["BadRequest"]
-	}
-	authorityLevelstr, exists := c.Get("authorityLevel")
-	if !exists {
-		return jsonHelper.DefaultHttpErrors["BadRequest"]
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
 
-	authorityLevel, _ := strconv.Atoi(authorityLevelstr.(string))
+	authBody, ok := authBodyField.(auth.AuthBody)
 
-
-	user , err := tc.userRepo.GetUserByEmail(c,userEmail.(string))
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
 
 	ticketToReceive := c.Param("id")
 
@@ -93,20 +89,12 @@ func (tc *ticketController) getByID(c *gin.Context) error {
 			Status: 500,
 		}
 	}
-
-	if authorityLevel > 10 {
-		c.JSON(200, gin.H{"ticket":ticket})
-		c.Abort()
-		return nil
-	}
-	if ticket.UserId.String() != user.ID.String() {
+	if ticket.UserId.String() != authBody.GetUser().ID.String() && authBody.GetRole().AuthorityLevel < 2 {
 		return jsonHelper.ApiError{
 			Err:    "You have no authority to retrieve this source",
 			Status: 403,
 		}
 	}
-
-
 	c.JSON(200, gin.H{"ticket":ticket})
 	return nil
 }
