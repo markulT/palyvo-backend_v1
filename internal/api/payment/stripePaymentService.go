@@ -112,8 +112,9 @@ func (s *stripePaymentService) CreateCheckoutSession(productList []ProductDto, c
 		}),
 		LineItems: lineItems,
 		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
-		SuccessURL: stripe.String("https://example.com/success"),
-		CancelURL: stripe.String("https://example.com/cancel"),
+		SuccessURL: nil,
+		CancelURL: nil,
+		RedirectOnCompletion: nil,
 	}
 
 	sess, err := session.New(params)

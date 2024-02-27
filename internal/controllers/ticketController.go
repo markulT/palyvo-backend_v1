@@ -45,16 +45,18 @@ func SetupTicketRoutes(r *gin.Engine, userRepo repository.UserRepo, tr ticketRep
 
 func (tc *ticketController) getAll(c *gin.Context) error {
 
-	userField, exists := c.Get("user")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.DefaultHttpErrors["BadRequest"]
-	}
-	user, ok:=userField.(models.User)
-	if !ok {
-		return jsonHelper.DefaultHttpErrors["BadRequest"]
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
 
-	tickets, err := tc.ticketRepo.GetAllTicketsByUserID(user.ID)
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+
+	tickets, err := tc.ticketRepo.GetAllTicketsByUserID(authBody.GetUser().ID)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Error getting tickets",

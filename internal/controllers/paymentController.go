@@ -295,14 +295,17 @@ func (sc *paymentController) createSetupIntent(c *gin.Context) error {
 	var body CreateSetupIntentRequest
 	jsonHelper.BindWithException(&body, c)
 
-	userEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "Unauthorized",
-			Status: 417,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, err := sc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", userEmail))
+
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, err := sc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authBody.GetUser().Email))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -344,15 +347,18 @@ func (pc *paymentController) buyAmount(c *gin.Context) error {
 	}
 
 
-	userEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "User does not exist",
-			Status: 404,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
 
-	user, err := pc.userRepo.GetUserByEmail(c,userEmail.(string))
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+
+	user, err := pc.userRepo.GetUserByEmail(c,authBody.GetUser().Email)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "No such user",
@@ -439,14 +445,17 @@ func (pc *paymentController) setDefaultPaymentMethod(c *gin.Context) error {
 	if err:=c.Bind(&body);err!=nil {
 		return jsonHelper.DefaultHttpErrors["BadRequest"]
 	}
-	authUserEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "User unauthorized",
-			Status: 417,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
+
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, err := pc.userRepo.GetUserByEmail(c,authBody.GetUser().Email)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -459,14 +468,17 @@ func (pc *paymentController) setDefaultPaymentMethod(c *gin.Context) error {
 }
 
 func (pc *paymentController) paymentMethodsHandler(c *gin.Context) error {
-	userEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "User does not exist",
-			Status: 404,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", userEmail))
+
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authBody.GetUser().Email))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -493,14 +505,17 @@ func (pc *paymentController) getDefaultPaymentMethod(c *gin.Context) error {
 
 	var err error
 
-	authUserEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "User unauthorized",
-			Status: 417,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
+
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authBody.GetUser().Email))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
@@ -523,14 +538,17 @@ func (pc *paymentController) getDefaultPaymentMethod(c *gin.Context) error {
 func (pc *paymentController) deletePaymentMethod(c *gin.Context) error {
 	var err error
 
-	authUserEmail, exists := c.Get("userEmail")
+	authBodyField, exists := c.Get("authBody")
 	if !exists {
-		return jsonHelper.ApiError{
-			Err:    "User unauthorized",
-			Status: 417,
-		}
+		return jsonHelper.DefaultHttpErrors["400"]
 	}
-	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authUserEmail))
+
+	authBody, ok := authBodyField.(auth.AuthBody)
+
+	if !ok {
+		return jsonHelper.DefaultHttpErrors["400"]
+	}
+	user, err := pc.userRepo.GetUserByEmail(c,fmt.Sprintf("%s", authBody.GetUser().Email))
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    err.Error(),
