@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -32,7 +31,6 @@ type defaultTicketRepo struct {}
 
 func (d *defaultTicketRepo) UpdatePaymentID(c context.Context,u uuid.UUID, s string) error {
 	ticketCollection := tools.DB.Collection("tickets")
-	fmt.Println("updating")
 	_,err := ticketCollection.UpdateByID(c, u, bson.M{"$set":bson.M{"paymentId":s, "status":models.ACTIVATED}})
 	if err != nil {
 		return err
@@ -62,15 +60,16 @@ func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {
 
 func (d *defaultTicketRepo) GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error) {
 	var tickets []models.Ticket
+	ctx := context.Background()
 	ticketCollection := tools.DB.Collection("tickets")
-	cursor, err := ticketCollection.Find(context.TODO(), bson.M{"userId":userID})
+	cursor, err := ticketCollection.Find(ctx, bson.M{"userId":userID})
 	if err != nil {
 		return nil, err
 	}
 	if cursor.Err() !=nil {
 		return nil, cursor.Err()
 	}
-	if cursor.Next(context.TODO()) {
+	if cursor.Next(ctx) {
 		var ticket models.Ticket
 		if err:=cursor.Decode(&ticket);err!=nil {
 			return nil, err
@@ -87,8 +86,6 @@ func (d *defaultTicketRepo) UpdateStatus(u uuid.UUID, s string) error {
 }
 
 func (d *defaultTicketRepo) Create(c context.Context, ticket models.Ticket) error {
-	fmt.Println("saving huynia")
-	fmt.Println(ticket)
 	ticketCollection := tools.DB.Collection("tickets")
 	_, err := ticketCollection.InsertOne(c, ticket)
 	return err

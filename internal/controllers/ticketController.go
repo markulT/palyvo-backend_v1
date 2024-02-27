@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"palyvoua/internal/models"
@@ -55,7 +56,7 @@ func (tc *ticketController) getAll(c *gin.Context) error {
 	if !ok {
 		return jsonHelper.DefaultHttpErrors["400"]
 	}
-
+	fmt.Println(authBody.GetUser().ID)
 	tickets, err := tc.ticketRepo.GetAllTicketsByUserID(authBody.GetUser().ID)
 	if err != nil {
 		return jsonHelper.ApiError{
