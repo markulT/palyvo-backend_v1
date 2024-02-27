@@ -54,10 +54,10 @@ func (d *defaultProductTicketRepo) FindByParams(c context.Context, params *FindT
 		filter["fuelType"] = *params.FuelType
 	}
 	curs, err := d.localCollection.Find(c, filter)
+	defer curs.Close(c)
 	if err !=nil {
 		return nil, err
 	}
-	defer curs.Close(c)
 
 	for curs.Next(c) {
 		var ticket models.ProductTicket

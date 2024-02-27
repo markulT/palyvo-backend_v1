@@ -1,28 +1,18 @@
 package controllers
 
 import (
-	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"palyvoua/internal/models"
 	"palyvoua/internal/repository"
 	"palyvoua/tools/auth"
 	"palyvoua/tools/jsonHelper"
 )
 
 type ticketController struct {
-	ticketRepo ticketRepo
+	ticketRepo repository.TicketRepo
 	userRepo repository.UserRepo
 	adminRepo adminRepo
-}
-
-type ticketRepo interface {
-	GetAll() ([]models.Ticket, error)
-	GetAllTicketsByUserID(c context.Context,userID uuid.UUID) ([]models.Ticket, error)
-	GetByID(uuid.UUID) (models.Ticket, error)
-	UpdateStatus(uuid.UUID, string) error
-	UpdatePaymentID(context.Context,uuid.UUID, string) error
 }
 
 //type ticketControllerOptions func(*ticketController)
@@ -33,7 +23,7 @@ type ticketRepo interface {
 //	}
 //}
 
-func SetupTicketRoutes(r *gin.Engine, userRepo repository.UserRepo, tr ticketRepo, adminRepo adminRepo) {
+func SetupTicketRoutes(r *gin.Engine, userRepo repository.UserRepo, tr repository.TicketRepo, adminRepo adminRepo) {
 	ticketGroup := r.Group("/ticket")
 
 	tc := ticketController{userRepo: userRepo, ticketRepo: tr, adminRepo: adminRepo}

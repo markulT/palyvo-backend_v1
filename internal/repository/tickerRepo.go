@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -41,15 +40,17 @@ func (d *defaultTicketRepo) UpdatePaymentID(c context.Context,u uuid.UUID, s str
 
 func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {
 	var tickets []models.Ticket
+	ctx := context.Background()
 	ticketCollection := tools.DB.Collection("tickets")
-	cursor, err := ticketCollection.Find(context.TODO(), bson.M{})
+	cursor, err := ticketCollection.Find(ctx, bson.M{})
+	defer cursor.Close(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if cursor.Err() !=nil {
 		return nil, cursor.Err()
 	}
-	if cursor.Next(context.TODO()) {
+	for cursor.Next(ctx) {
 		var ticket models.Ticket
 		if err:=cursor.Decode(&ticket);err!=nil {
 			return nil, err
@@ -63,18 +64,20 @@ func (d *defaultTicketRepo) GetAllTicketsByUserID(c context.Context,userID uuid.
 	var tickets []models.Ticket
 	ticketCollection := tools.DB.Collection("tickets")
 	cursor, err := ticketCollection.Find(c, bson.M{"userId":userID})
+	defer cursor.Close(c)
 	if err != nil {
 		return nil, err
 	}
 	if cursor.Err() !=nil {
 		return nil, cursor.Err()
 	}
-	if cursor.Next(c) {
-		fmt.Println("")
+
+	for cursor.Next(c) {
 		var ticket models.Ticket
 		if err:=cursor.Decode(&ticket);err!=nil {
 			return nil, err
 		}
+
 		tickets = append(tickets, ticket)
 	}
 	return tickets, nil

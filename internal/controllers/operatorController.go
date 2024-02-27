@@ -14,10 +14,10 @@ import (
 type operatorController struct {
 	authRepo repository.UserRepo
 	adminRepo adminRepo
-	ticketRepo ticketRepo
+	ticketRepo repository.TicketRepo
 }
 
-func SetupOperatorRoutes(r *gin.Engine , authRepo repository.UserRepo, adminRepo adminRepo, tr ticketRepo) {
+func SetupOperatorRoutes(r *gin.Engine , authRepo repository.UserRepo, adminRepo adminRepo, tr repository.TicketRepo) {
 	operatorGroup := r.Group("/operator")
 
 	oc := operatorController{authRepo: authRepo, adminRepo: adminRepo, ticketRepo: tr}
