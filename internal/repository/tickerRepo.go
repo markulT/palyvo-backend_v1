@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,7 +19,7 @@ type TicketRepo interface {
 	WithTransaction(c context.Context, fn CreateTicketTransactionFn) error
 
 	GetAll() ([]models.Ticket, error)
-	GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error)
+	GetAllTicketsByUserID(c context.Context,userID uuid.UUID) ([]models.Ticket, error)
 	UpdateStatus(uuid.UUID, string) error
 	UpdatePaymentID(context.Context,uuid.UUID,string) error
 }
@@ -58,18 +59,18 @@ func (d *defaultTicketRepo) GetAll() ([]models.Ticket, error) {
 	return tickets, nil
 }
 
-func (d *defaultTicketRepo) GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error) {
+func (d *defaultTicketRepo) GetAllTicketsByUserID(c context.Context,userID uuid.UUID) ([]models.Ticket, error) {
 	var tickets []models.Ticket
-	ctx := context.Background()
 	ticketCollection := tools.DB.Collection("tickets")
-	cursor, err := ticketCollection.Find(ctx, bson.M{"userId":userID})
+	cursor, err := ticketCollection.Find(c, bson.M{"userId":userID})
 	if err != nil {
 		return nil, err
 	}
 	if cursor.Err() !=nil {
 		return nil, cursor.Err()
 	}
-	if cursor.Next(ctx) {
+	if cursor.Next(c) {
+		fmt.Println("")
 		var ticket models.Ticket
 		if err:=cursor.Decode(&ticket);err!=nil {
 			return nil, err

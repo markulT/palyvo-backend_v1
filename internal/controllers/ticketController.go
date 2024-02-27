@@ -19,7 +19,7 @@ type ticketController struct {
 
 type ticketRepo interface {
 	GetAll() ([]models.Ticket, error)
-	GetAllTicketsByUserID(userID uuid.UUID) ([]models.Ticket, error)
+	GetAllTicketsByUserID(c context.Context,userID uuid.UUID) ([]models.Ticket, error)
 	GetByID(uuid.UUID) (models.Ticket, error)
 	UpdateStatus(uuid.UUID, string) error
 	UpdatePaymentID(context.Context,uuid.UUID, string) error
@@ -57,7 +57,7 @@ func (tc *ticketController) getAll(c *gin.Context) error {
 		return jsonHelper.DefaultHttpErrors["400"]
 	}
 	fmt.Println(authBody.GetUser().ID)
-	tickets, err := tc.ticketRepo.GetAllTicketsByUserID(authBody.GetUser().ID)
+	tickets, err := tc.ticketRepo.GetAllTicketsByUserID(c,authBody.GetUser().ID)
 	if err != nil {
 		return jsonHelper.ApiError{
 			Err:    "Error getting tickets",
