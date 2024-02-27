@@ -6,6 +6,7 @@ import (
 	"os"
 	"palyvoua/internal/api/payment"
 	"palyvoua/internal/controllers"
+	"palyvoua/internal/mapper"
 	"palyvoua/internal/repository"
 	"palyvoua/tools"
 	"palyvoua/tools/data"
@@ -39,6 +40,11 @@ func main() {
 	consistentProductRepo := repository.NewConsistentProductRepo()
 	productTicketRepo := repository.NewProductTicketRepo()
 
+	ticketMapper := mapper.NewTicketMapper(mapper.TicketMapperOptions{
+		ProductTicketRepo: productTicketRepo,
+		TicketRepo:        ticketRepo,
+	})
+
 	r.Use(jsonHelper.CORSMiddleware())
 
 	//config := cors.DefaultConfig()
@@ -59,12 +65,19 @@ func main() {
 		AdminRepo: adminRepo,
 	}
 
+	ticketRoutesOptions := controllers.TicketRoutesOptions{
+		UserRepo:     userRepo,
+		TicketRepo:   ticketRepo,
+		AdminRepo:    adminRepo,
+		TicketMapper: ticketMapper,
+	}
+
 	controllers.SetupAuthRoutes(r, userRepo, stripePaymentService)
 	controllers.SetupOperatorRoutes(r, userRepo, adminRepo, ticketRepo)
 	controllers.SetupPaymentRoutes(r, &paymentRoutesOptions)
 	controllers.SetupAdminRoutes(r, adminRepo, userRepo)
 	controllers.SetupProductRoutes(r, consistentProductRepo, userRepo, adminRepo, stripePaymentService)
-	controllers.SetupTicketRoutes(r,userRepo, ticketRepo,adminRepo)
+	controllers.SetupTicketRoutes(r,&ticketRoutesOptions)
 	controllers.SetupProductTicketRoutes(r,adminRepo, userRepo, productTicketRepo, stripePaymentService)
 
 	r.Run()
